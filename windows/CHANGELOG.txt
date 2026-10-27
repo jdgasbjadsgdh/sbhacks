@@ -1,0 +1,17 @@
+24 October 2026 — Windows multibox input update
+
+Sync now turns shared controls ON and targets the requesting character.
+Room matching uses server/game/zone/floor instead of a local world-object ID.
+The symbol resolver finishes keyboard and InputMapping methods from DWARF
+even when the loading methods were already found in a partial COFF table.
+Followers pause for their own chat, menu and key editor as well as blocked
+source input, room changes, loss of focus and stale state.
+
+The Multibox panel displays why controls are paused or unavailable. Native
+input errors and key-event counters are included in loading-status.txt.
+No account credentials, group keys or game packets are written to that file.
+
+Retains the Keys editor, Emergency hold, free-camera recovery, mouse/text
+fixes and arm-all controls. Existing bindings and custom tools are preserved.
+Install the complete update in every Windows client/copy, then launch its
+usual run.bat when ready. Live Windows/Sandboxie validation remains pending.

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Install SBPE loading controls</title>
+<style>
+body{margin:0;background:#101923;color:#eaf3fa;font:15px/1.6 system-ui}main{max-width:700px;margin:6vh auto;padding:28px;background:#182430;border:1px solid #385568;border-top:3px solid #07d8bb;border-radius:12px}h1{font-size:26px;margin:0 0 12px}li{margin:12px 0}small{color:#b5c8d8}button{padding:12px 18px;margin:8px 8px 8px 0;background:#215c53;border:1px solid #608877;border-radius:6px;color:white;font:inherit;cursor:pointer}button:disabled{opacity:.5;cursor:default}a{color:#83dfc4}pre{white-space:pre-wrap;background:#101923;padding:14px;border-radius:6px}details{margin-top:20px}
+</style>
+<main><h1>Install loading controls for WebBreak</h1>
+<p>This local installer adds Rush hold, room preview, boss hold, free camera and short button guides. Hide all UI removes the panel and its tab; F8 restores them. It keeps existing WebBreak settings and saves a backup before updating.</p>
+<ol><li>Open this file in <strong>Chrome or Edge</strong>.</li>
+<li>Choose the <strong>same Overrides folder</strong> already selected in your game’s DevTools. Choose the folder containing <code>www.starbreak.com</code>, or that domain folder itself.</li>
+<li>Click Install / update. Reload your web game with DevTools open whenever you are ready.</li></ol>
+<button id="choose">Choose Overrides folder</button><button id="install" disabled>Install / update</button>
+<pre id="status" role="status">Choose your Overrides folder to begin.</pre>
+<small>No account password, downloads, game restart or browser refresh is performed by this installer.</small>
+<p><strong>Arm all tabs:</strong> after updating each game tab, check “Arm all connected web tabs” below the panel buttons, then choose Rush hold, Boss hold or Timed. It reaches tabs in the same browser profile; active holds are left alone. Separate profiles and native clients are separate groups.</p>
+<details><summary>First time using WebBreak?</summary><p>In the game tab, open DevTools, then Sources → Overrides → Select folder for overrides. Choose an empty folder and click Allow. Select that same folder here and install. Keep DevTools open when reloading and playing.</p><p>Alternative: copy the included <code>www.starbreak.com</code> folder into your Overrides folder. The installer is preferred when updating because it preserves custom WebBreak settings.</p><p><a href="https://github.com/pjrje4/WebBreak/#install">WebBreak instructions</a> · <a href="https://developer.chrome.com/docs/devtools/overrides/">Chrome Overrides guide</a></p></details>
+<details><summary>SC quick guide</summary><p>Before the last generator is destroyed, select Rush hold. Wait through the early hold, then select Preview room to look at the boss. Select Reconnect when ready to spawn. Preview ends the early hold and cannot restore it. Server disconnects and mission expiry can still interrupt either hold.</p><p>F8 opens/closes the panel. F9 arms the last mode or cancels an unused arm. F10 continues loading or reconnects. Closing the panel keeps the hold active.</p></details>
+</main>
+<script src="payload-data.js"></script><script src="install-core.js"></script>
+<script>
+let selected;const statusBox=document.getElementById('status'), installButton=document.getElementById('install');
+document.getElementById('choose').onclick=async()=>{try{
+ if(!window.showDirectoryPicker)throw new Error('Open INSTALL.html in desktop Chrome or Edge, or use the manual copy option below.');
+ selected=await showDirectoryPicker({mode:'readwrite'});statusBox.textContent='Selected: '+selected.name+'\nClick Install / update to write the loading plugin.';installButton.disabled=false;
+}catch(error){if(error.name!=='AbortError')statusBox.textContent=error.message;}};
+installButton.onclick=async()=>{installButton.disabled=true;try{
+ const result=await SBPELoadingInstaller.install(selected,SBPELoadingPayload);
+ statusBox.textContent=result.changed?'Installed: www.starbreak.com/'+result.file+'\n'+(result.backup?'Backup: '+result.backup+'\n':'')+'Reload your game with DevTools open when ready.':'Already up to date. Reload your game when ready.';
+}catch(error){statusBox.textContent='Installation stopped: '+error.message;}finally{installButton.disabled=false;}};
+</script></html>

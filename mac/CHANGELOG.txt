@@ -1,0 +1,13 @@
+24 October 2026 — Hide all disconnect UI
+
+Added Hide all UI at the top right of Loading controls. It hides Loading,
+Emergency hold and Multibox panels and collapsed tabs. F8 restores them.
+Active holds, free camera, reconnect hotkeys and multibox input keep working.
+Hidden panels do not intercept game clicks; already-captured releases are
+consumed without firing stale actions. Visibility is local to each client
+and starts normally on the next launch. Close panel remains available.
+
+Includes the SC chest-overlay lifetime fix from Mac v2, Emergency hold/F4,
+native Controls > SBPE rebinding and free-camera recovery. The complete
+tutorial explains the new button. Mac loading F8/F9/F10 remain fixed.
+Installers preserve settings, create backups and do not restart the game.

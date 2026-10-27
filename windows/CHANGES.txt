@@ -1,0 +1,16 @@
+Windows Loading Controls — 2026.10.24-loading.2
+
+- Increased guide text to a minimum of 12 pixels and reduced outline thickness.
+- Added A-/A+ sizing, adaptive layout, text fitting and cached text textures.
+- Replaced silent initialization failure with a visible UNAVAILABLE state and
+  a complete diagnostic in loading-status.txt.
+- Accounted for PE32 ASLR relocations during native entry validation while
+  preserving build hashes and checks on all other code bytes.
+- Updated older mouse hooks to test GUI clicks in window coordinates before
+  applying the game's zoom scaling.
+- Completed missing configuration options on upgrades without overwriting
+  explicit settings or occupied shortcuts.
+- Made the initial arm shortcut select Rush hold directly.
+
+Validation: offline native x86 ABI, state/recovery, relocation, installer,
+mouse-routing and GUI tests. Live Windows confirmation remains pending.

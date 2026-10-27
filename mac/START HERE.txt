@@ -1,0 +1,94 @@
+SBPE Emergency Hold for Mac
+24 October 2026 | Version 2026.10.24-emergency.3
+
+QUICK START
+F4: disconnect this client and hold its next spawn.
+F10: resume loading or reconnect to spawn normally.
+On a Mac keyboard, you may need Fn+F4 / Fn+F10.
+
+HIDE EVERY DISCONNECT PANEL
+Click Hide all UI at the top right of Loading controls. It hides Loading
+controls, Emergency hold and Multibox, including their collapsed tabs. F8
+(or Fn+F8) restores the UI. Active holds, reconnect shortcuts, free camera
+and multibox input keep working. This is local to the current client and
+lasts until you restore the UI or restart. Close panel still collapses just
+the individual panel.
+
+Press F4 while your living character is already in a map. The client
+disconnects once, reconnects, and holds loading before the character spawns.
+Use F10 or Resume / reconnect when ready to enter again. The server chooses
+the room and spawn position. Wait at least ten seconds between activations.
+
+The panel can be closed and reopened from its Emergency hold tab. Closing
+it keeps the shortcut and any current hold active. On a small window the
+panel starts collapsed. F4 always affects this client alone, including when
+Arm all clients is checked in the loading controls.
+
+CHANGE THE HOTKEY
+Open StarBreak Settings > Controls > SBPE. Go to the second page and find
+Emergency hold. Click a key slot and press a new key; changes save immediately.
+Backspace clears a slot. Three alternative key slots are supported.
+F8/F9/F10 are reserved for loading controls. A shortcut that conflicts with
+another SBPE action will not trigger Emergency hold. The panel displays the
+available shortcut, or GUI only if none is available. The shortcut is blocked
+while typing chat, rebinding controls, or while SBPE is paused.
+
+INSTALL INTO EXISTING MAC SBPE
+1. Extract the entire ZIP and keep all files together.
+2. Close the game when you choose to update.
+3. Double-click INSTALL.command and choose the existing Mac SBPE folder
+   containing config.ini and sbpe-mac.dylib.
+4. Open that installation's usual RUN.command when ready.
+
+The installer updates the native module, enables Emergency hold, and adds
+F4 if it is free. Existing assigned keys and unrelated settings are preserved;
+if F4 is occupied, bind another key in Controls > SBPE. Replaced files and
+settings are backed up in loading-plugin-backups/. The installer does not
+launch or restart a game. No separate Python installation is needed.
+
+NEW MAC SBPE INSTALLATION
+Extract the whole ZIP and open RUN.command in this folder. Steam must be
+running. Emergency hold and F4 are ready in the included configuration.
+The launcher checks the supported Intel StarBreak executable. Apple silicon
+uses Rosetta for the Intel game and native module.
+
+WHAT IS INCLUDED
+Emergency hold panel and configurable native hotkey; Rush/Boss/Timed loading
+controls and room preview; free camera that resumes across held reconnects;
+existing gameplay overlays and the optional Mac multibox panel. This package
+does not install or configure the separate Steam isolation application.
+Personal highlight lists and recordings are excluded; capture tools are disabled.
+See CONNECTIVITY GUIDE.txt for the loading and multibox controls.
+
+KNOWN LIMITS
+This is an experimental disconnect-and-hold tool. An observer has confirmed
+disappearance in a live test, and the character returned to the same mission
+with unchanged health. Avoiding incoming damage has not been established.
+It cannot undo damage/death already accepted by the server, guarantee an
+instant disappearance, reserve a checkpoint or keep a mission alive.
+The server may reconnect repeatedly during a hold or return you to Eschaton.
+
+There is no automatic low-health trigger. Emergency hold is also available
+in the separate Windows Emergency package. Web Connectivity v4 has regular
+loading controls without Emergency hold. See TUTORIAL.txt in this Mac update
+for the platform differences and complete usage instructions.
+
+This update fixes an observed crash in the chest-contents overlay at the end
+of SC. Chest identity and data are copied through checked memory reads, and
+post-draw overlays refresh their object list after native rendering. The fix
+requires a chosen client relaunch; installing does not restart the game.
+
+DISABLE / RESTORE
+Clear the Emergency hold keys in Controls > SBPE to use the button only.
+To disable the feature, set enabled = no in [plugin_reconnect_lab] in
+config.ini and press F5 to reload settings. The legacy section name is kept
+for compatibility with earlier test builds.
+To restore the previous installation, copy its backed-up files and config.ini
+from loading-plugin-backups/ while the game is closed, then launch normally.
+
+DIAGNOSTICS
+Health and timing metadata save locally in loading-tests/ when activated.
+No passwords, Steam tickets, cipher keys or packet contents are recorded by
+this feature. It makes no external uploads. Logs are not included in this ZIP.
+
+SBPE by atomizer. Original StarBreak game/resources: Crunchy Games.

@@ -1,0 +1,380 @@
+SBPE CONNECTIVITY / LOADING CONTROLS: COMPLETE USER GUIDE
+24 October 2026
+
+This guide covers the Mac Emergency Hold export, Windows Emergency Hold v3,
+and WebBreak Connectivity v4. Features and controls differ between builds.
+Use each platform's complete package; individual Python/JavaScript files are
+not interchangeable between platforms.
+
+1. WHAT THE PLUGIN DOES
+
+The plugin can delay part of StarBreak's normal loading process. You can wait
+before a map becomes available locally, or load a map while keeping your
+character's spawn held. You can then finish loading when you choose.
+
+The main sequence is:
+
+  Arm a mode -> enter the next load -> wait -> optionally preview -> finish
+
+Arming prepares the NEXT matching load. It does not remove a character who
+is already playing. Emergency hold is the separate feature for that case.
+
+Rush hold waits at an earlier loading stage where possible. Boss hold waits
+at the later stage where a boss map can be visible but your character is not
+yet spawned. Preview room moves from the early wait into that visible-map
+stage. These stages can have different connection behavior and time limits.
+
+The server still chooses the mission, room, checkpoint and spawn position.
+A room preview is an observation, not a reservation. This plugin does not
+fix ordinary network lag or guarantee that a mission remains available.
+
+2. INSTALLATION
+
+MAC
+Use SBPE-Emergency-Hold-Mac-2026-10-24.zip.
+
+1. Extract the entire ZIP; keep the files and subfolders together.
+2. To update existing Mac SBPE, close that game when ready, open
+   INSTALL.command, and choose the folder containing config.ini and
+   sbpe-mac.dylib. Do not select the StarBreak game folder.
+3. Start that installation with its usual RUN.command when ready.
+4. For a new standalone SBPE installation, use RUN.command in the extracted
+   package instead. Steam must already be running.
+
+The installer backs up replaced files and preserves existing settings and
+bindings. It does not launch a game. The native module requires the supported
+Intel StarBreak build; Apple silicon runs that Intel game through Rosetta.
+
+WINDOWS / SANDBOXIE
+Use SBPE-Emergency-Hold-Windows-2026-10-24-v3.zip.
+
+1. Have Windows SBPE 1.7.0 installed already. This ZIP is an update, not a
+   complete game or complete Windows SBPE installation.
+2. Close the Windows game when ready, then extract the ENTIRE update ZIP.
+3. Double-click INSTALL.cmd. Choose your SBPE folder containing pypy,
+   plugins, config.ini and run.bat. Do not choose the extracted update folder
+   or the Steam game folder. You can also drag the SBPE folder onto
+   INSTALL.cmd.
+4. Wait for "Loading plugin installed", then launch the updated run.bat.
+5. Update every SBPE copy used by your other accounts, including private
+   copies inside sandboxes. All clients should use the same update.
+
+The installer uses SBPE's bundled PyPy, creates backups, and preserves custom
+tools and assigned shortcuts. No separate Python installation is needed.
+Copying only plugins/loading_probe.py is insufficient: the update also needs
+its input bridge, native adapter and support modules.
+
+WEBBREAK
+Use SBPE-Connectivity-Web-2026-10-24-v4.zip.
+
+1. Extract the entire Web package and open INSTALL.html in desktop Chrome
+   or Edge.
+2. Choose the existing DevTools Overrides folder you use for WebBreak, then
+   choose Install / update. The installer includes first-time setup help.
+3. Open StarBreak with DevTools open and reload when ready so the override
+   is applied. A currently running page does not gain new code automatically.
+4. If installing manually, follow the package's www.starbreak.com fallback
+   instructions and keep the provided relative paths intact.
+
+Installing or copying files does not activate new native code in an already
+running game. Native clients need a chosen relaunch; web needs a page reload.
+
+3. EVERY LOADING CONTROL
+
+Rush hold
+  Arms an early wait for the very next map load, including a boss entrance.
+  Click it before the relevant portal or automatic room transition. If an
+  earlier room loads first, that room can consume the arm. If the early
+  loading stage cannot be intercepted, the plugin reports a fallback and
+  holds the later visible-map stage instead.
+
+Boss hold
+  Arms a hold for the next room the plugin recognizes as a boss room.
+  Intermediate non-boss rooms can load normally. The boss map can become
+  visible while your character's spawn stays held. Recognition depends on
+  the map information available to the client; it is not a universal boss
+  detector for arbitrary future maps.
+
+Preview room
+  During an early Rush/Timed hold, continues map loading while keeping the
+  later character-spawn stage held. This lets you inspect the current room.
+  It is unavailable before an actual early hold starts. Once you advance
+  into preview, you cannot turn that same load back into an early wait.
+
+Reconnect / Finish loading / Next: preview
+  This button and the finish hotkey are contextual. During an ordinary early
+  Rush hold, Finish loading continues that load normally, without a separate
+  preview. During the early Timed hold, Next: preview advances to preview.
+  During a visible-map hold, Reconnect uses a fresh normal connection to
+  finish the hold and spawn. Read the current button label before using it.
+  A reconnect can also be requested during ordinary connected play.
+
+Free camera
+  Toggles map panning during a valid visible-map hold with no local character.
+  Use WASD or arrow keys; hold Shift to move faster. It moves the camera,
+  not a character, and cannot show a map the client has not received.
+
+Timed: 360s
+  Arms an early wait and automatically advances into preview after roughly
+  six minutes of holding. It does not automatically spawn after six minutes.
+  Finish/reconnect is still manual. The 360-second setting is a chosen test
+  interval, not an SC completion guarantee or a server timeout guarantee.
+
+Cancel hold
+  Cancels an unused arm. If a hold is already active, ends it by continuing
+  loading or reconnecting as appropriate. It can cause your character to
+  spawn. Use Close panel when you only want to hide the interface.
+
+Close panel
+  Hides the interface. The current arm, hold and applicable hotkeys remain
+  active. Use the panel hotkey or collapsed tab to reopen it.
+
+Save log (web)
+  Downloads that page's current test log. Save before refreshing or closing;
+  unsaved web events are held in memory and a reload discards them.
+
+The Room line identifies the room currently known to the client. "Not sent
+by server yet" is normal during an early wait. It cannot promise the exact
+room or position the server will choose on a later reconnect.
+
+4. FIRST TEST IN AN ORDINARY MISSION
+
+1. Start in a connected game with no active hold. Leave Arm all unchecked.
+2. Click Rush hold before entering a portal. Confirm the panel says ARMED.
+3. Enter the portal and confirm HOLDING. In an early hold, having no visible
+   map yet is expected.
+4. Click Preview room. Wait for the map to become available; your character
+   should still be absent. Try Free camera if you want to inspect it.
+5. Click Reconnect to finish and spawn through normal recovery.
+6. If using a second account, compare whether it sees your character and
+   position after spawning. A local picture alone does not prove that both
+   clients agree about character presence or movement.
+
+Once the hold has finished, arm again before another transition. One arm is
+not a permanent rule applied to every future mission.
+
+5. THE SC WORKFLOW
+
+To wait before SC boss, then inspect the final platform arrangement:
+
+1. While already in SC and before the last generator is destroyed, click
+   Rush hold. Arm close enough to the boss transition that a different room
+   transition does not consume it first.
+2. Let the generator/Unknown-message sequence trigger the boss load. Verify
+   that the panel actually enters an EARLY HOLD rather than assuming it did.
+3. Wait in that early phase. For manual control, use Rush hold. To advance
+   into preview automatically after six minutes, choose Timed before entry.
+4. Click Preview room when you want to inspect the boss. Use Free camera to
+   check whether the platforms are completely settled in the straight line
+   under the boss and whether the chest has appeared.
+5. Click Reconnect when you want to spawn. Allow time for the fresh load;
+   the picture you just inspected can change while reconnecting.
+
+This early-wait-then-preview sequence has worked in the reported Mac tests.
+It does not prove unlimited holding or a guaranteed chest window. There is
+no automatic final-platform/chest detector in the plugin, and no measured
+time range guaranteed to cover every run, even assuming damage is immediate.
+Platform scripts, transitions and server timing still take time.
+
+Boss hold is the alternative when you want to see the boss map immediately
+without first waiting in the early phase. Seeing the map sooner does not
+establish that the connection can be held for as long as an early wait.
+
+6. NATURAL DISCONNECTS AND FREE CAMERA
+
+While a manual hold is active, a natural connection loss normally keeps the
+hold armed across recovery. A reconnecting screen does not itself mean you
+requested a normal spawn. Inspect the plugin's status.
+
+Free camera stays selected across held recovery in these builds. WAIT means
+there is temporarily no valid held map to control. It resumes when a valid
+map returns. The same logical room keeps its camera position; a different
+room starts from that room's native offset. You can switch free camera off
+while waiting. Finishing/canceling the hold or spawning ends the selection.
+
+The server can still expire the mission or return you to Eschaton. The
+plugin cannot restore a discarded instance, force a particular checkpoint,
+or follow another player into a room the server has not assigned to you.
+
+7. EMERGENCY HOLD: MAC AND WINDOWS
+
+Emergency hold is available in the listed Mac and Windows Emergency packages.
+It is not included in the listed WebBreak v4 package.
+
+1. Be alive and already spawned, with no other arm or hold in progress.
+2. Press the assigned Emergency shortcut, normally F4, or click Disconnect
+   + hold in its separate panel.
+3. The plugin requests one normal disconnect/recovery while retaining an
+   early Rush arm. The next loading/spawn sequence is held.
+4. Use Resume / reconnect or your finish hotkey when ready to enter again.
+5. Wait at least ten seconds between activations.
+
+This affects only the client where you activate it, even with Arm all checked.
+Closing its panel does not disable its shortcut or finish its hold. Small
+windows may start with the Emergency panel collapsed.
+
+An observer confirmed disappearance during a Mac test. That does not prove
+instant protection from incoming damage. It cannot undo server-accepted
+damage or death, and it does not guarantee mission retention. There is no
+automatic low-health activation. Windows has offline tests; a live Windows
+in-game confirmation is still needed.
+
+8. HOTKEYS AND CHANGING THEM
+
+                         MAC             WINDOWS                WEB v4
+Loading panel            F8              Usually F6 or F11       F8
+Arm/cancel unused arm    F9              Usually F7              F9
+Next/finish/reconnect    F10             Usually F9              F10
+Emergency hold           F4 if available F4 if available         Not included
+Free-camera movement     WASD/arrows     WASD/arrows             WASD/arrows
+Faster free camera       Shift           Shift                   Shift
+
+The Windows installer preserves occupied shortcuts. Its actual panel/arm/
+finish bindings can therefore differ from the usual defaults. Read the
+panel footer or loading-status.txt. Select a mode with its button first;
+the arm hotkey subsequently arms the selected mode. Initial presets differ
+between platforms/builds, so F9/F7 alone is not a reliable way to select Rush.
+
+WINDOWS REBINDING
+Click Keys in the Loading controls v6 header. Click a slot beside an action,
+then press the new key. Backspace clears it; Esc cancels the assignment or
+closes the editor. Prev/Next shows additional rows in a small window.
+
+The editor covers Emergency, panel, arm-selected, Rush, Boss, Preview,
+finish/reconnect, free camera, Timed and Cancel. New direct-action shortcuts
+start unbound. Changes save and apply immediately in that client. Conflicting
+SBPE/tool shortcuts are rejected; clear an occupied binding before reusing
+its key. Emergency Set hotkey opens the same editor at its Emergency row.
+
+MAC REBINDING
+Open StarBreak Settings > Controls > SBPE. Emergency hold is on the second
+page. Click a key slot and press a key; Backspace clears it. Three alternative
+slots are available and changes save immediately. This page also contains
+other supported SBPE actions, such as zoom and hide players.
+
+In the current Mac export, F8/F9/F10 for loading controls remain fixed. There
+is no Windows-style Keys button on the Mac loading panel. The current Web v4
+loading F8/F9/F10 controls also have no in-game key editor.
+
+Shortcuts require game focus and are blocked while typing/rebinding. On a Mac
+keyboard, use Fn with the function key if macOS handles that key itself.
+F4 is only assigned when free; GUI only means choose an unused shortcut or
+use the button. Holding the Emergency key does not repeatedly activate it.
+
+9. MULTIBOX AND ARM ALL
+
+The plugin controls clients you have already launched. It does not create
+additional Steam instances or configure Sandboxie/Steam isolation for you.
+
+MAC
+Use the existing Main/follower multibox launcher/configuration. In Main,
+enable the Multibox panel's ON control and keep SBPE unpaused. A follower's
+local ON setting cannot override Main being off or paused.
+
+"main / off" means Main is not supplying shared controls. "controls off"
+means that client's controls are disabled/paused. If the local toggle already
+says ON but the status remains off, check Main and its Pause / resume SBPE
+setting, normally F12. Sync is requested from Main; a follower displays
+Following or Paused instead of acting as the Sync leader.
+
+WINDOWS / SANDBOXIE v3
+All clients need the same multibox_group_key and multibox_port under
+[plugin_loading_probe] in config.ini. Install into the shared SBPE folder
+outside Sandboxie, or update private copies and copy those two group settings
+between them. Do not replace account login settings.
+
+Health bars confirm that clients have found the group; native input can still
+be unavailable separately. Controls starts OFF. Click Controls: ON to mirror
+the focused client's game actions into background clients in the same room.
+Each client uses its own StarBreak bindings. Any focused Windows game window
+can lead; this differs from the Mac's configured Main/follower arrangement.
+
+Click Sync in the character's window you want the others to approach. In v3,
+Sync turns controls ON and walks the other characters toward that requester.
+Keep that window focused. Sync uses movement and jumping, not teleportation
+or guaranteed obstacle navigation. It ends on overlap, timeout, or loss of
+the required state. Controls OFF releases mirrored keys and stops syncing.
+
+The status below the Windows buttons explains why input is stopped. Matching
+rooms use shared server/game/zone/floor information. Different rooms, stale
+updates, chat, settings and key editing stop shared input. If the coordinator
+exits, another client can take over, but controls reset OFF.
+
+Discovery uses local IPv4 UDP, coordinator port 47812 and private reply ports.
+A restrictive Sandboxie policy must permit that local traffic for the game.
+The installer does not change Sandboxie network policies automatically.
+
+ARM ALL CLIENTS
+Check Arm all clients, then choose Rush, Boss or Timed from Main/the controlling
+panel. This broadcasts the selected arm to connected compatible clients.
+Existing holds are preserved rather than replaced. Shared movement may stay
+off while arming. Uncheck it when you want future arms to affect only yourself.
+
+The checkbox does not broadcast preview, free-camera movement, closing panels
+or Emergency hold. Use each client's controls to preview/finish individually.
+Reconnect all is an explicit separate action; it can finish held loads as
+well as request recovery during ordinary play. It is not a reconnect that
+promises to leave everyone's current hold untouched.
+
+On web, Arm all connected web tabs applies only within the same browser
+profile and storage partition. Separate/private profiles and native clients
+are separate groups. Web v4 does not include the native shared-movement/Sync
+panel. Mac and Windows native groups do not share a cross-platform protocol.
+
+10. STATUS, TROUBLESHOOTING AND LOGS
+
+IDLE: no arm or hold is active.
+ARMED: waiting for the next matching load; the current character can still play.
+HOLDING: a loading readiness stage is being held. Read whether it is the early
+  wait or a visible-map preview.
+WAITING / reconnecting while held: transport/map state changed and the hold
+  is being retained. A new map may need to arrive before preview/freecam works.
+PREVIEW PENDING / Waiting for map: early readiness was released; waiting for
+  a map whose spawn can be held.
+FINISHING / RECONNECTING after you chose finish: the hold is ending normally.
+DONE / result: the trial finished. Arm again for a new one.
+
+If a button is grey, inspect the current state: Preview needs an early hold;
+Free camera needs a loaded, unspawned map; Emergency needs a living spawned
+character with no active hold. Closing a panel is different from canceling.
+
+If Windows health bars work but controls do not, update ALL copies to v3,
+launch through the updated run.bat, and read the Multibox status. Native
+keyboard initialization errors and sent/handled key-event counts are saved
+in loading-status.txt beside run.bat. If the issue continues, send that file
+and a fresh remote.log from the affected instance.
+
+If Windows panel clicks/text are broken, use the complete installer. An older
+compiled mouse callback or partial update is not fixed by copying one plugin
+file. The latest Windows panel also has A-/A+ controls for readability.
+
+If you return to Eschaton, the server did not retain/assign the mission on
+that recovery. A preview earlier in the trial cannot override that outcome.
+If players freeze or jump while already spawned, or r stays at 0, that is a
+connection symptom to investigate separately; the loading plugin does not
+establish its cause or fix normal-play connectivity by itself. During a hold,
+do not judge state solely by whether your character is drawn locally.
+
+Mac and Windows save local metadata in loading-tests/. Web requires Save log
+before reload/close. These feature logs exclude passwords, Steam tickets,
+cipher keys and packet contents, and do not upload themselves. For a useful
+report include platform/version, mode, early versus preview hold, approximate
+elapsed time, what you clicked, whether you had spawned, and what another
+account saw. Native tests have offline coverage; Windows/Sandboxie behavior
+still needs live in-game verification.
+
+11. DISABLING OR RESTORING
+
+To stop the current hold, use Cancel/finish; hiding the panel leaves it active.
+To disable the native loading plugin, set enabled = no under
+[plugin_loading_probe] in config.ini and use the platform's normal settings
+reload or next chosen launch. Do not rely on a global pause to unload native
+hooks or prove that a disconnect is unrelated to SBPE.
+
+Mac Emergency alone: enabled = no under [plugin_reconnect_lab], then F5 to
+reload settings. Windows Emergency alone: emergency_enabled = no under
+[plugin_loading_probe]. Clear the Emergency key if you only want button use.
+
+Keep the installer backups. With the game closed, restore the backed-up
+files/settings to revert the installation. Use the correct platform/build
+backup; native libraries and Windows support modules are not interchangeable.

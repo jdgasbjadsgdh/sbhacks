@@ -1,0 +1,29 @@
+{
+  "source": "https://github.com/pjrje4/WebBreak",
+  "upstream_commit": "ec7fe74579ec6ad7a5e663a2a55672de62fc8361",
+  "upstream_sha256": "f5de99f6e13ce048ad5e96fd18efcce75d4ba837ba07297fb5fcc029c01488ce",
+  "spawn_timing_observer": "removed at user request",
+  "sc_test_sha256": "ee739b14f89f7933010504f393284d4f3ff0997078c595f44833064bb1b1b37a",
+  "combined_sha256": "08946b8095550a8d22db6a5c38718c534870d18ac781c3f2104ef391f22c51a2",
+  "build": "1574197275",
+  "network_uploads": false,
+  "mac_shared_binds": {
+    "zoom": "V",
+    "zoom_far": "T",
+    "hide_players": "R",
+    "history": "C",
+    "map": "Right Shift",
+    "health": "'",
+    "chat": ".",
+    "camera": "L"
+  },
+  "changes_to_original_game_body": false,
+  "live_browser_validation": "pending",
+  "sc_test_initially_armed": false,
+  "connectivity_version": "2026.10.25-connectivity.1",
+  "hide_all_ui": "Hide all UI hides the loading panel and collapsed tab locally. F8 restores the panel. Holds, free camera and F9/F10 remain active; visibility resets on page reload.",
+  "arm_all": "Opt-in checkbox; Rush/Boss/Timed arm commands over BroadcastChannel to same-origin tabs in the same browser storage partition. Active holds are preserved; separate profiles and native clients are separate groups.",
+  "free_camera": "GUI toggle while a map is loaded and player readiness is held; WASD/arrows, Shift faster; draw fields restored each frame; unavailable before map creation",
+  "sc_test_behavior": "Guided loading controls; rush -> explicit room preview -> manual reconnect; boss hold; timed 360-second early wait into preview. Preview continues asset readiness once and holds world readiness, including recovery. Explicit fallback if early phase absent. Holds persist across natural losses. F8 panel; F9 selected mode; F10 next/finish.",
+  "sc_test_limits": "No automatic platform detector or guarantee of hold lifetime, mission retention, checkpoint or chest window."
+}

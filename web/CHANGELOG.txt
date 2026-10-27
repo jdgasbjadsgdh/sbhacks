@@ -1,0 +1,8 @@
+25 October 2026 — Web Hide all UI
+
+Added Hide all UI to the loading-panel header. It hides the panel and its
+collapsed tab; F8 restores the panel. Holds, timers, free camera and F9/F10
+remain active. Natural reconnects and arm-all messages keep the UI hidden.
+Close panel keeps its existing collapsed-tab behavior. Visibility is local
+to each page and resets on reload. Includes an updated installer, short guide
+and complete tutorial. Existing WebBreak settings/game body are preserved.
