@@ -4,6 +4,11 @@ The plugin controls which parts of the normal client loading sequence are allowe
 to finish. It does not create a different mission server or choose an arbitrary
 checkpoint. Internal state names vary slightly between platforms.
 
+**Warning: Boss hold and Preview room kick you after about 10 seconds.**
+The 2 November update adds one deferred Rush reconnect when the early phase
+is absent. No platform data is available during an asset-only hold.
+See [Rush and SC](RUSH-AND-SC.md) for current behavior and the investigation.
+
 ## Loading sequence
 
 1. **Idle:** ordinary play; no hold is armed.

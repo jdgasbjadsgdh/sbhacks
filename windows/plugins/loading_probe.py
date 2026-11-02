@@ -437,14 +437,14 @@ class Plugin(PluginBase):
             if not self.error and self.control.state in ('holding', 'waiting') and self.control.held:
                 state += ' | {}s'.format(int(time.monotonic()-self.control.held['started']))
             self.label(state, panel[0]+pad, panel[1]+40*s, 14, width=panel[2]-2*pad, color=0xffb0a0 if self.error else 0xffff80)
-            self.label('SC: Rush hold > Preview room > Reconnect', panel[0]+pad, panel[1]+59*s, 12, width=panel[2]-2*pad)
+            self.label('Warning: Boss hold / Preview kick after 10s', panel[0]+pad, panel[1]+59*s, 12, width=panel[2]-2*pad, color=0xffff80)
             c = self.current()
             can_arm = bool(self.native and c and c['state'] == 3 and self.control.state not in ('holding', 'waiting', 'reconnecting', 'finishing', 'preview_pending'))
             early = bool(self.control.held and self.control.held.get('type') == 22 and not self.control.preview_requested)
             finish = 'Waiting for map' if self.control.state == 'preview_pending' else 'Next: preview' if early and self.control.preset == 'staged' else 'Finish loading' if early else 'Reconnect'
             camera_label = ('Free camera: ON' if self.camera_available(c) else 'Free camera: WAIT') if self.camera else 'Free camera'
             names = ['Rush hold', 'Boss hold', 'Preview room', finish, camera_label, 'Timed: {}s'.format(int(self.control.early_seconds)), 'Cancel hold', 'Close panel']
-            helpers = ['Wait before map loads.', 'Hold in the next boss.', 'View map; keep held.', 'Continue loading.' if early else 'Reconnect to spawn.', 'WASD/arrows; Shift fast.', 'Wait, then preview.', 'Disarm or finish hold.', 'Hide UI; hold stays on.']
+            helpers = ['Any entry; early retry once.', 'Boss preview may time out.', 'View map; keep held.', 'Continue loading.' if early else 'Reconnect to spawn.', 'WASD/arrows; Shift fast.', 'Wait, then preview.', 'Disarm or finish hold.', 'Hide UI; hold stays on.']
             for i, (rect, name) in enumerate(zip(buttons, names)):
                 enabled = bool(i == 7 or self.native and not (
                     i in (0, 1, 5) and not can_arm or i == 4 and not (self.camera or self.camera_available(c)) or

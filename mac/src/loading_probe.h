@@ -27,7 +27,7 @@ static struct {
     int client_t0,client_t1,time_messages,input_messages,create_logged,post_closed;
     int reconnect_on_release,reconnect_issued,reloaded,mission_retained,manual,force_reconnect,recoveries;
     int preset,ready_type,asset_finish,stage;
-    int staged_fallback,room_preview;
+    int staged_fallback,room_preview,rush_retry_attempted,rush_retry_pending;
     unsigned asset_headers,world_headers,asset_empty_calls,asset_proto_calls,asset_unbound_calls,phase_trace_logs;
     double early_seconds,early_connection_started;
     uint64_t time_ms;
@@ -290,6 +290,35 @@ static void probe_wait_for_world(const char *why){
     snprintf(loading_probe.result,sizeof(loading_probe.result),"%s",loading_probe.preset==PROBE_STAGED&&loading_probe.stage==PROBE_STAGE_EARLY?"Connection lost; early wait continues. F10 previews.":"Connection lost; hold remains active. F10 to spawn.");
     LOG("Loading test: %s; manual hold retained across native recovery. Fresh readiness stays blocked until F10/Reconnect or Cancel.",why);
 }
+/* A same-server transition may omit LOAD_PVID entirely. Try one fresh native
+ * connection, retaining the hold, instead of waiting for the short world-ready
+ * deadline. Never close inside the readiness callback, or retry in a loop. */
+static int probe_rush_retry_begin(void *connection){
+    int pending=loading_probe.rush_retry_pending;loading_probe.rush_retry_pending=0;
+    struct WorldClient *wc=probe_world();
+    if(!pending||!loading_probe_installed||paused||!getbool("plugin_loading_probe","enabled",0)||
+       loading_probe.state!=PROBE_HOLD||loading_probe.preset!=PROBE_RUSH||loading_probe.room_preview||
+       loading_probe.asset_finish||loading_probe.ready_type!=MT_WORLD_CREATED||
+       connection!=loading_probe.connection||!probe_same_world(wc)||wc->clientWorld->player)return 0;
+    probe_wait_for_world("Rush requested one fresh connection for the early asset phase");
+    return 1;
+}
+static void probe_rush_retry_cancel(void){
+    if(loading_probe.rush_retry_pending&&probe_reconnect_cancel)
+        probe_reconnect_cancel(loading_probe.connection,probe_rush_retry_begin);
+    loading_probe.rush_retry_pending=0;
+}
+static void probe_rush_retry(void){
+    if(!loading_probe.manual||loading_probe.preset!=PROBE_RUSH||loading_probe.room_preview||
+       loading_probe.rush_retry_attempted||!getbool("plugin_loading_probe","rush_reconnect",1))return;
+    loading_probe.rush_retry_attempted=1;loading_probe.rush_retry_pending=1;
+    if(!probe_reconnect_request||!probe_reconnect_request(loading_probe.connection,probe_rush_retry_begin)){
+        loading_probe.rush_retry_pending=0;
+        LOG("Loading test: Rush early retry unavailable; world readiness remains held, manual finish still available.");return;
+    }
+    snprintf(loading_probe.result,sizeof(loading_probe.result),"Rush: retrying early loading once; spawn stays held.");
+    LOG("Loading test: early phase absent; queued one Rush reconnect after I/O, for any map/boss. No readiness released. Server may select another room; no automatic retry loop.");
+}
 static int probe_reconnect_begin(void *connection){
     if(loading_probe.state!=PROBE_RECONNECT||loading_probe.reconnect_issued||connection!=loading_probe.connection)return 0;
     struct WorldClient *wc=probe_world();
@@ -421,6 +450,7 @@ static void probe_arm(void){
     LOG("Loading test: armed once for normal Fire Forest or Frozen Blight; %.1fs hold; finish=%s; F10 ends hold/cancels arm. Observer must check character presence and shared position.",loading_probe.seconds,loading_probe.reconnect_on_release?"fresh native reconnect":"ordinary readiness release");
 }
 static void probe_manual_reconnect(void){
+    probe_rush_retry_cancel();
     if(loading_probe.preset==PROBE_STAGED&&loading_probe.stage==PROBE_STAGE_EARLY&&loading_probe.state==PROBE_ARMED){
         snprintf(loading_probe.result,sizeof(loading_probe.result),"Armed; enter the next map before previewing.");return;
     }
@@ -481,6 +511,7 @@ static void probe_preview_room(void){
     probe_release("rush room preview requested");
 }
 static void probe_cancel(void){
+    probe_rush_retry_cancel();
     if(loading_probe.preset==PROBE_STAGED||loading_probe.room_preview){
         int pending=loading_probe.stage==PROBE_STAGE_PENDING&&loading_probe.asset_finish;
         loading_probe.stage=PROBE_STAGE_NONE;loading_probe.room_preview=0;
@@ -641,6 +672,7 @@ static void loading_probe_send(struct ServerConnection *connection,int type){
     loading_probe.client_t0=loading_probe.client_t1=probe_client_t(cw);
     if(loading_probe.manual)LOG("Loading test: holding WORLD_CREATED until manual F10 reconnect; zone=%s world=%u game=%u maxT=%d objects=%d own_t=%d; physics/time/input continue; local player absent.",loading_probe.zone,loading_probe.world,loading_probe.game,loading_probe.world_t0,loading_probe.objects0,loading_probe.client_t0);
     else LOG("Loading test: holding WORLD_CREATED for %.1fs; maxT=%d objects=%d own_t=%d; native physics/time/input continue; local player absent.",loading_probe.seconds,loading_probe.world_t0,loading_probe.objects0,loading_probe.client_t0);
+    probe_rush_retry();
 }
 static void loading_probe_frame(void){
     if(!loading_probe_installed)return;double now=probe_clock();struct WorldClient *wc=probe_world();
@@ -805,7 +837,7 @@ static void loading_probe_overlay(void){
         if(loading_probe.state==PROBE_HOLD||loading_probe.state==PROBE_WAIT)snprintf(line,sizeof(line),"%s | %.1f seconds held",probe_state_label(),probe_clock()-loading_probe.started);
         else snprintf(line,sizeof(line),"%s",probe_state_label());
         probe_gui_text(line,panel.x+12,panel.y+43,15,0xffffff60,0,0);
-        probe_gui_text(probe_manual_mode()?"SC: Rush hold > Preview room > Reconnect":"Normal Forest / Blight | Timed test",panel.x+12,panel.y+63,11,0xffc8d7e4,0,0);
+        probe_gui_text(probe_manual_mode()?"Warning: Boss hold / Preview kick after 10s":"Normal Forest / Blight | Timed test",panel.x+12,panel.y+63,11,0xffffff60,0,0);
         struct ServerConnection *connection=probe_connection();int connected=connection&&connection->state==CONNECTED;
         int pending=probe_preview_pending();
         int can_arm=connected&&!paused&&!loading_probe.asset_finish&&loading_probe.state!=PROBE_HOLD&&loading_probe.state!=PROBE_WAIT&&loading_probe.state!=PROBE_RECONNECT;
@@ -824,11 +856,12 @@ static void loading_probe_overlay(void){
         if(loading_probe.preset==PROBE_STAGED&&loading_probe.stage==PROBE_STAGE_EARLY)snprintf(line,sizeof(line),"Early hold: %.1f / %.0fs (then preview)",loading_probe.state==PROBE_HOLD||loading_probe.state==PROBE_WAIT?probe_clock()-loading_probe.started:0,loading_probe.early_seconds);
         if(pending)snprintf(line,sizeof(line),"Preview pending; waiting for server-selected map");
         int fallback=loading_probe.preset==PROBE_STAGED&&loading_probe.staged_fallback&&loading_probe.stage==PROBE_STAGE_PREVIEW&&(loading_probe.state==PROBE_HOLD||loading_probe.state==PROBE_WAIT);
-        if(fallback)snprintf(line,sizeof(line),"Fallback: early wait unavailable; map loaded");
+        if(loading_probe.rush_retry_pending)snprintf(line,sizeof(line),"Rush: reconnecting once for early loading");
+        else if(fallback)snprintf(line,sizeof(line),"Fallback: early wait unavailable; map loaded");
         else if(loading_probe.preset==PROBE_RUSH&&showing_room&&!loading_probe.room_preview)snprintf(line,sizeof(line),"Fallback: early wait unavailable; map loaded");
-        else if(loading_probe.room_preview&&showing_room)snprintf(line,sizeof(line),"Preview can time out; reconnect when ready.");
+        else if(loading_probe.room_preview&&showing_room)snprintf(line,sizeof(line),"Preview may expire near 10s; reconnect promptly.");
         /* Replace the old diagnostic block with short, task-oriented help. */
-        const char *help[PROBE_BUTTONS]={"Wait before map loads.","Hold spawn in next boss.",pending?"Waiting for server map.":loading_probe.ready_type==MT_PVID_LOADED?"Continue loading.":"Fresh reconnect to spawn.","Disarm or finish hold.","WASD/arrows; Shift fast.","Hide UI; hold stays on.","Wait, then show preview.","View map; keep held."};
+        const char *help[PROBE_BUTTONS]={"Any entry; early retry once.","Boss preview may time out.",pending?"Waiting for server map.":loading_probe.ready_type==MT_PVID_LOADED?"Continue loading.":"Fresh reconnect to spawn.","Disarm or finish hold.","WASD/arrows; Shift fast.","Hide UI; hold stays on.","Wait, then show preview.","View map; keep held."};
         const char *compact[PROBE_BUTTONS]={"Wait before entry.","Hold next boss.","Continue / spawn.","End / disarm hold.","WASD; Shift fast.","Hide; hold stays.","Wait, then view.","View; keep held."};
         for(int i=0;i<PROBE_BUTTONS;++i)probe_gui_text(buttons[i].w<145?compact[i]:help[i],buttons[i].x,buttons[i].y+29,buttons[i].w<145?9:10,0xffb5c8d8,0,0);
         probe_gui_text(line,panel.x+12,info+36,11,fallback||showing_room?0xffffb45c:0xffc8d7e4,0,0);

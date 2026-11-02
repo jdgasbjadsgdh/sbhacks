@@ -47,6 +47,7 @@
         var self = this; this.mode = 'idle'; this.preset = 'any'; this.held = null; this.reconnectSocket = null; this.pending = false; this.unloaded = false; this.finishPending = null;
         this.started = Date.now(); this.events = []; this.streams = new WeakMap(); this.lastSample = 0; this.lastUI = 0;
         this.previewRequested = false; this.fallback = false; this.earlySeconds = 360;
+        this.rushRetryEnabled = true; this.rushRetryAttempted = false; this.rushRetry = null;
         this.camera = null; this.cameraSaved = null; this.cameraKeys = new Set(); this.cameraDown = new Set();
         this.message = 'Arm for the next map (including SC boss). A disconnect keeps the test held until you finish.';
         this.api = { arm: function () { self.arm(); }, reconnect: function () { self.requestReconnect('manual'); },
@@ -201,6 +202,7 @@
         if (!c || !c.cw || c.connection.state !== 3 || !c.socket) { this.message = 'Enter a connected game before arming.'; this.updateUI(); return; }
         this.mode = 'armed'; this.preset = preset || 'any'; this.held = null; this.reconnectSocket = null; this.started = Date.now(); this.events = [];
         this.previewRequested = false; this.fallback = false;
+        this.rushRetryAttempted = false; this.rushRetry = null;
         this.message = this.preset === 'rush' ? 'Skip rush armed: wait before map creation where possible. Catch-up is experimental.' : this.preset === 'boss' ? 'Skip boss armed: intermediate rooms pass; the next boss room will be held.' : 'Armed for the next map. F9 cancels the unused arm.';
         this.record('armed', { preset: this.preset, origin: this.identity(c) }); this.updateUI();
       }
@@ -246,6 +248,10 @@
                 mode = 'holding'; events.push('room_preview_ready'); return true;
               }
               if (mode === 'holding' || mode === 'waiting') {
+                if (mode === 'waiting' && type === 22 && self.preset === 'rush' && !self.previewRequested) {
+                  held = { socket: socket, key: c.key, game: held.game, started: held.started, lastOwn: c.own, type: 22 };
+                  mode = 'holding'; events.push('early_asset_readiness_held'); return true;
+                }
                 if(type !== held.type) {
                   if(held.type === 22 && type === 11) {
                     held = { socket: socket, key: c.key, game: held.game, started: held.started, lastOwn: c.own, type: 11 };
@@ -291,7 +297,7 @@
           if (events.indexOf('map_readiness_held') !== -1) self.message = 'Loading held. Choose Finish / reconnect when you want a fresh spawn.';
           if (events.indexOf('recovered_readiness_held') !== -1) self.message = 'Connection recovered; still holding. F10 or Finish / reconnect finishes the hold.';
           if (events.indexOf('fresh_world_ready') !== -1) self.message = 'Fresh readiness sent normally. Compare your position with the other account.';
-          if(events.indexOf('early_asset_readiness_held') !== -1)self.message = 'Rush: waiting before map creation. F10 / Finish loading continues this load. Compare room with the other account.';
+          if(events.indexOf('early_asset_readiness_held') !== -1){self.fallback=false;self.message = 'Early hold: map and platforms not received. Preview room loads them; F10 finishes normally.';}
           if(events.indexOf('early_hold_world_fallback') !== -1 || events.indexOf('early_phase_absent_world_fallback') !== -1){self.fallback=true;self.message = 'Early wait unavailable on this entry; holding the loaded map instead.';}
           if(events.indexOf('world_after_early_finish') !== -1)self.message = 'Map selected after early finish. Compare room/floor with the other account.';
           if(events.indexOf('room_preview_ready') !== -1)self.message = 'Room preview ready. Reconnect when you want to spawn.';
@@ -327,6 +333,7 @@
         this.requestReconnect('preview_room', false, true);
       }
       requestReconnect(reason, forceReconnect, forPreview) {
+        this.rushRetry = null;
         if(forceReconnect && this.finishPending){this.finishPending=null;this.pending=false;}
         if (this.pending || (!forceReconnect && (this.mode === 'reconnecting' || this.mode === 'finishing' || this.mode === 'preview_pending'))) return;
         if (!forceReconnect && !forPreview && this.preset === 'staged' && this.previewAvailable()) { this.previewRoom(); return; }
@@ -354,6 +361,27 @@
           self.record('socket_close_requested');
         }, 0);
       }
+      retryEarlyHold(c) {
+        if (!this.rushRetryEnabled || this.rushRetryAttempted || this.preset !== 'rush' || this.previewRequested ||
+            this.pending || this.mode !== 'holding' || !this.held || this.held.type !== 11 || !c || c.player ||
+            c.key !== this.held.key || c.socket !== this.held.socket || c.connection.state !== 3) return;
+        this.rushRetryAttempted = true;
+        var self=this, retry=this.rushRetry={held:this.held, connection:c.connection.address, socket:c.socket, key:c.key};
+        var peers=Object.keys(c.socket.peers||{}).map(function(k){return c.socket.peers[k].socket;}).filter(function(ws){return ws.readyState===1;});
+        this.message='Rush: retrying early loading once; spawn stays held.';
+        this.record('rush_early_retry_requested'); this.updateUI();
+        host.setTimeout(function(){
+          if(self.unloaded||self.rushRetry!==retry)return; self.rushRetry=null;
+          var current=self.current();
+          if(self.mode!=='holding'||self.pending||self.previewRequested||self.held!==retry.held||!current||current.player||
+              current.key!==retry.key||current.socket!==retry.socket||current.connection.address!==retry.connection||current.connection.state!==3)return;
+          var active=Object.keys(current.socket.peers||{}).map(function(k){return current.socket.peers[k].socket;});
+          if(!peers.length||!peers.every(function(ws){return ws.readyState===1&&active.indexOf(ws)>=0;}))return;
+          self.mode='waiting'; self.message='Rush reconnect issued; fresh readiness remains held.';
+          self.record('rush_early_retry_issued');
+          peers.forEach(function(ws){ws.close(1000,'Rush early hold');}); self.updateUI();
+        },0);
+      }
       afterUpdate() {
         this.attachTransport(); var c = this.current(), now = Date.now();
         this.finishAsset();
@@ -364,6 +392,7 @@
           } else if (c.own !== null) this.held.lastOwn = c.own;
         }
         this.syncCamera(c);
+        this.retryEarlyHold(c);
         if (this.preset === 'staged' && this.previewAvailable() && now-this.held.started >= this.earlySeconds*1000) this.previewRoom();
         // Encrypted traffic bypasses the readiness gate. Still finish the UI
         // state once a different connection has produced a local player.
@@ -388,10 +417,10 @@
         this.hideButton.style.cssText='min-height:29px;padding:4px 9px;border:1px solid #4c697e;border-radius:4px;background:#30434e;color:#fff;font:inherit;cursor:pointer';
         this.hideButton.onclick=this.api.hideUI;header.appendChild(this.hideButton);
         this.status = doc.createElement('div'); this.status.style.cssText = 'white-space:pre-line;color:#ffff8a;margin:6px 0'; this.status.setAttribute('aria-live', 'polite'); p.appendChild(this.status);
-        var flow = doc.createElement('small'); flow.textContent = 'SC: Rush hold → Preview room → Reconnect'; flow.style.cssText = 'display:block;color:#b5c8d8;margin-bottom:10px'; p.appendChild(flow);
+        var flow = doc.createElement('small'); flow.textContent = 'Warning: Boss hold and Preview room kick after about 10 seconds.'; flow.style.cssText = 'display:block;color:#ffff8a;margin-bottom:10px'; p.appendChild(flow);
         var buttons = doc.createElement('div'); buttons.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:10px 12px'; p.appendChild(buttons);
         this.buttons = {};
-        [['Rush hold', this.api.skipRush, 'Wait before next map loads.', 'rush'], ['Boss hold', this.api.skipBoss, 'View the next boss; hold spawn.', 'boss'],
+        [['Rush hold', this.api.skipRush, 'Any next entry; tries early loading once.', 'rush'], ['Boss hold', this.api.skipBoss, 'View next boss; preview can time out.', 'boss'],
          ['Preview room', this.api.previewRoom, 'End early wait; keep spawn held.', 'preview'], ['Reconnect', this.api.reconnect, 'Reconnect for a fresh spawn.', 'finish'],
          ['Free camera', this.api.freeCamera, 'Preview: WASD / arrows; Shift faster.', 'camera'], ['Timed: 360s', this.api.staged, 'Early wait, then auto-preview.', 'staged'],
          ['Cancel hold', this.api.cancel, 'Disarm or finish the hold.', 'cancel'], ['Close panel', this.api.togglePanel, 'Hide UI; keep hold active.', 'close'],

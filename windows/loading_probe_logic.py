@@ -12,6 +12,8 @@ class LoadingControl:
         self.pending = None
         self.preview_requested = False
         self.fallback = False
+        self.rush_retry_attempted = False
+        self.rush_retry_enabled = True
         self.early_seconds = 360
         self.started = 0
         self.message = 'Choose a mode before entering the next map.'
@@ -33,12 +35,15 @@ class LoadingControl:
         self.state, self.preset, self.held, self.pending = 'armed', preset, None, None
         self.preview_requested = False
         self.fallback = False
+        self.rush_retry_attempted = False
         self.started = self.clock()
         self.message = 'Armed: {}. Finish manually when ready.'.format(preset)
         self.emit('armed', preset=preset)
         return True
 
     def hold(self, c, kind):
+        if kind == 22:
+            self.fallback = False
         prior = self.held
         self.held = dict((k, c.get(k)) for k in ('connection_id', 'socket', 'key', 'game'))
         self.held['type'] = kind
@@ -109,6 +114,16 @@ class LoadingControl:
         return True
 
     def frame(self, c):
+        # Called after native callbacks; one fresh transport can provide the
+        # asset phase omitted by an in-mission transition. Keep readiness held.
+        if (self.rush_retry_enabled and self.preset == 'rush' and not self.preview_requested and
+                self.state == 'holding' and self.held and self.held['type'] == 11 and
+                not self.rush_retry_attempted and not self.pending and
+                self.same(c, self.held) and c['state'] == 3 and not c.get('player')):
+            self.rush_retry_attempted = True
+            self.pending = dict(self.held, action='rush_retry')
+            self.message = 'Rush: retrying early loading once; spawn stays held.'
+            self.emit('rush_early_retry_requested')
         if self.state == 'holding':
             same = self.same_transport(c, self.held) if self.held['type'] == 22 else self.same(c, self.held)
             if not same or c['state'] != 3:
@@ -136,6 +151,8 @@ class LoadingControl:
         return self.finish(c, preview=True)
 
     def finish(self, c, preview=False):
+        if self.pending and self.pending['action'] == 'rush_retry':
+            self.pending = None
         if self.state in ('reconnecting', 'finishing', 'preview_pending') or self.pending:
             return False
         if not preview and self.preset == 'staged' and self.preview_available():
@@ -172,6 +189,9 @@ class LoadingControl:
         same = self.same_transport(c, pending) if pending['action'] == 'asset' else self.same(c, pending)
         if not same or c['state'] != 3:
             self.pending = None
+            if pending['action'] == 'rush_retry':
+                self.emit('rush_early_retry_stale')
+                return None
             self.state = 'preview_pending' if pending.get('preview') else 'reconnecting'
             self.message = 'Waiting for a fresh recovered load.'
             self.emit('stale_finish_discarded')
@@ -179,12 +199,21 @@ class LoadingControl:
         if io_connection_id != pending['connection_id'] or not io_ok:
             return None
         self.pending = None
+        if pending['action'] == 'rush_retry':
+            if self.state != 'holding' or self.preview_requested or c.get('player'):
+                return None
+            self.state = 'waiting'
+            self.message = 'Rush reconnect issued; fresh readiness remains held.'
+            self.emit('rush_early_retry_issued')
+            return 'reconnect'
         self.state = ('preview_pending' if pending.get('preview') else 'finishing') if pending['action'] == 'asset' else 'reconnecting'
         self.message = 'Finishing early load.' if pending['action'] == 'asset' else 'Reconnecting for a fresh spawn.'
         self.emit('finish_issued', action=pending['action'])
         return pending['action']
 
     def cancel(self, c):
+        if self.pending and self.pending['action'] == 'rush_retry':
+            self.pending = None
         if self.state == 'armed':
             self.state = 'idle'
             self.message = 'Arm canceled.'

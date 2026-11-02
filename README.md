@@ -4,6 +4,12 @@ Loading holds, room preview, free camera, and manual disconnect/reconnect contro
 for StarBreak. Mac and Windows include **Emergency hold**: disconnect a spawned
 character and hold its next spawn until you choose to continue.
 
+**Warning: Boss hold and Preview room kick you after about 10 seconds.**
+Use Rush for an early wait and preview only briefly. Rush now tries one fresh
+connection when an entry skips early loading, for any boss family. This remains
+an experimental workaround; live SC confirmation is pending.
+[Updated workflow and platform-data investigation](docs/RUSH-AND-SC.md).
+
 ## Downloads
 
 Download the ZIP for your platform and **extract the entire archive** before
@@ -12,14 +18,13 @@ plugin file or running an installer from GitHub's source preview.
 
 | Platform | Download | Package version |
 | --- | --- | --- |
-| Mac SBPE | [Download Mac ZIP](https://github.com/jdgasbjadsgdh/sbhacks/raw/refs/heads/main/downloads/SBPE-Emergency-Hold-Mac-2026-10-24-v3.zip) | `2026.10.24-emergency.3` |
-| Windows SBPE / Sandboxie | [Download Windows ZIP](https://github.com/jdgasbjadsgdh/sbhacks/raw/refs/heads/main/downloads/SBPE-Emergency-Hold-Windows-2026-10-24-v3.zip) | `2026.10.24-emergency.3` |
-| WebBreak | [Download Web ZIP](https://github.com/jdgasbjadsgdh/sbhacks/raw/refs/heads/main/downloads/SBPE-Connectivity-Web-2026-10-25.zip) | `2026.10.25-connectivity.1` |
+| Mac SBPE | [Download Mac ZIP](https://github.com/jdgasbjadsgdh/sbhacks/raw/refs/heads/main/downloads/SBPE-Connectivity-Mac-2026-11-02.zip) | `2026.11.02-connectivity.1` |
+| Windows SBPE / Sandboxie | [Download Windows ZIP](https://github.com/jdgasbjadsgdh/sbhacks/raw/refs/heads/main/downloads/SBPE-Connectivity-Windows-2026-11-02.zip) | `2026.11.02-connectivity.1` |
+| WebBreak | [Download Web ZIP](https://github.com/jdgasbjadsgdh/sbhacks/raw/refs/heads/main/downloads/SBPE-Connectivity-Web-2026-11-02.zip) | `2026.11.02-connectivity.1` |
 
-These are the clean share-package snapshots published on 24–25 October 2026.
-Their original archives, source files, version information and SHA-256 checksums
-are included here. Personal account settings and test recordings are excluded.
-Later changes in a private/local install are not implied by these version numbers.
+These complete packages were updated on 2 November 2026. Earlier archives
+remain in downloads/. Source files, version metadata and SHA-256 checksums are
+included. Personal account settings and test recordings are excluded.
 
 ## What each version supports
 
@@ -129,7 +134,7 @@ unbound. **Set hotkey** on Emergency hold opens its row in the same editor.
 1. Before a portal or automatic boss transition, click **Rush hold**.
 2. Enter the transition. The panel should report an early hold where that loading
    stage is available.
-3. Wait as long as you choose, subject to server connection/session limits.
+3. Wait in EARLY HOLD while the server retains the mission. Boss hold and preview kick after about 10 seconds.
 4. Click **Preview room** to load the current map while keeping spawn held.
 5. Optionally enable **Free camera**, then use WASD/arrows to look around;
    Shift moves faster.

@@ -1,3 +1,16 @@
+2 NOVEMBER 2026 — CONNECTION UPDATE (2026.11.02-connectivity.1)
+WARNING: Boss hold and Preview room kick you after about 10 seconds.
+Preview uses the same short world-ready hold; use it only briefly.
+Rush hold now tries one fresh early-loading connection if the transition
+skips the asset phase. Arm Rush immediately before ANY desired boss entry.
+It targets the next transition, so intermediate rooms are not skipped.
+No automatic retry loop or guaranteed retention. EARLY HOLD has no live
+platform data. Watch on another account, or preview briefly near spawn time.
+The server can choose another room on reconnect. Live SC confirmation of
+the new early reconnect is pending. See RUSH AND SC.md for the investigation.
+Install the complete package; restart/reload when ready. No game is restarted
+by the installer. Existing settings and shortcuts are preserved.
+
 SBPE Connectivity / Loading Controls — 24 October 2026
 Version 2026.10.24-connectivity.4
 
@@ -17,7 +30,7 @@ are separate groups. It does not control Mac/Windows clients from web.
 
 SC WORKFLOW
 1. Before the last generator is destroyed, click Rush hold.
-2. Enter the boss load and wait in EARLY HOLD for as long as you choose.
+2. Enter the boss load and wait in EARLY HOLD while the server retains the mission.
 3. Click Preview room to see the current server-selected room without
    deliberately spawning. Check the platforms, using Free camera if needed.
 4. Click Reconnect when ready to spawn through a fresh normal connection.

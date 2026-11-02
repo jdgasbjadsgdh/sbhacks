@@ -134,7 +134,10 @@ def _loading_probe_call(method, *args):
         config += '\n[plugin_loading_probe]\nenabled = yes\npanel_key = {}\narm_key = {}\nfinish_key = {}\nstage_early_seconds = 360\ncamera_speed = 900\nui_scale = 0\nui_font = TenbyFive\n'.format(panel, arm, finish)
         result['config.ini'] = config
     else:
-        additions = [(key, value) for key,value in [('enabled','yes'), ('arm_key',arm), ('ui_scale','0'), ('ui_font','TenbyFive')]
+        panel = next((key for key in ('F6', 'F11') if key.lower() not in used), '')
+        finish = '' if 'f9' in used else 'F9'
+        additions = [(key, value) for key,value in [('enabled','yes'), ('panel_key',panel), ('finish_key',finish),
+                     ('arm_key',arm), ('stage_early_seconds','360'), ('camera_speed','900'), ('ui_scale','0'), ('ui_font','TenbyFive')]
                      if not parser.has_option('plugin_loading_probe', key)]
         if additions:
             result['config.ini'] = add_options(config, 'plugin_loading_probe', additions)

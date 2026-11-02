@@ -1,0 +1,10 @@
+{
+  "version": "2026.11.02-connectivity.1",
+  "native": "Five suites on arm64 and x86_64 with AddressSanitizer and UndefinedBehaviorSanitizer; all passed. Includes loading/rush/staged/preview/camera and Intel sender trampolines.",
+  "windows": "33 offline tests passed, including x86 emulation, CFFI UI/camera, deferred I/O, real loopback peers, compiled SBPE 1.7.0 mouse handler, key preservation and installers.",
+  "web": "Protocol/state tests, installer tests, isolated Chromium DOM/ABI and three-tab BroadcastChannel tests passed.",
+  "packaging": "All archive CRCs and per-file SHA256 hashes verified. Packaged Mac/Windows installers tested in temporary folders. Mac release and personal dylibs verified against pinned game SHA, UUID, symbols, architecture and dependencies.",
+  "live_SC": "Pending: the new one-shot Rush reconnect is not verified against a live SC server.",
+  "platform_data": "No supported single-client live platform view found while remaining in asset-only hold.",
+  "games_launched_or_restarted": false
+}

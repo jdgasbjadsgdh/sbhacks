@@ -1,3 +1,16 @@
+2 NOVEMBER 2026 — CONNECTION UPDATE (2026.11.02-connectivity.1)
+WARNING: Boss hold and Preview room kick you after about 10 seconds.
+Preview uses the same short world-ready hold; use it only briefly.
+Rush hold now tries one fresh early-loading connection if the transition
+skips the asset phase. Arm Rush immediately before ANY desired boss entry.
+It targets the next transition, so intermediate rooms are not skipped.
+No automatic retry loop or guaranteed retention. EARLY HOLD has no live
+platform data. Watch on another account, or preview briefly near spawn time.
+The server can choose another room on reconnect. Live SC confirmation of
+the new early reconnect is pending. See RUSH AND SC.md for the investigation.
+Install the complete package; restart/reload when ready. No game is restarted
+by the installer. Existing settings and shortcuts are preserved.
+
 SBPE Connectivity / Loading Controls for WebBreak
 25 October 2026 | Version 2026.10.25-connectivity.1
 

@@ -7,3 +7,6 @@ stonebow-tests/
 loading-probe-backups/
 sc_boss_captures/
 retina-runtime/
+
+# Pinned WebBreak test/build input, fetched with tools/build_connectivity.py.
+web/upstream/
