@@ -33,12 +33,14 @@ xcrun clang -arch arm64 -std=c11 -fsanitize=address,undefined -g -o /tmp/rush-te
 
 Also run `test_emergency_hotkey.c`, `test_hide_connectivity_ui.c`,
 `test_network_progress.c` and `test_stream_receiver.c` with the same flags.
-The Rush suite includes the previous loading, staged preview, camera, input,
+Also run `test_compact_connection.c` for the six-button UI, Rush-only shortcuts,
+SC/next-room gate, preview countdown and relocated emergency button. The Rush
+suite includes the previous loading, staged preview, camera, input,
 deferred reconnect and native-send-entry regressions. Fixture errors such as
 `fixture native error` are intentional fault injection; check the final test
 result. See [Rush and SC](../docs/RUSH-AND-SC.md) for live-validation limits.
 
-Build complete packages on macOS using:
+Build the compact Mac/Web v2 packages on macOS using:
 
 ```sh
 python tools/build_connectivity.py --output /tmp/sbpe-connectivity-packages
@@ -46,3 +48,7 @@ python tools/build_connectivity.py --output /tmp/sbpe-connectivity-packages
 
 The builder verifies the pinned WebBreak input, compiles the Mac dylib and
 writes ZIPs with individual file hashes, a manifest and archive checksums.
+
+For native Intel trampoline fixtures, use `-fno-sanitize=function` with ASan/UBSan:
+Clang function-type metadata is unavailable for emitted native trampolines.
+Other sanitizer checks remain enabled. Windows v1 packages are unchanged.

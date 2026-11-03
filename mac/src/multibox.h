@@ -52,8 +52,8 @@ static int mb_arm_local(int preset){
     if(paused||!loading_probe_installed||!getbool("plugin_loading_probe","enabled",0)||loading_probe.asset_finish||
        loading_probe.state==PROBE_HOLD||loading_probe.state==PROBE_WAIT||loading_probe.state==PROBE_RECONNECT||
        (preset<PROBE_ANY||preset>PROBE_STAGED))return 0;
-    probe_preset=preset;set_option("plugin_loading_probe","mode","manual");int local=probe_group_local;probe_group_local=1;probe_arm();probe_group_local=local;
-    return loading_probe.state==PROBE_ARMED&&loading_probe.preset==preset;
+    probe_preset=PROBE_RUSH;set_option("plugin_loading_probe","mode","manual");int local=probe_group_local;probe_group_local=1;probe_arm();probe_group_local=local;
+    return loading_probe.state==PROBE_ARMED&&loading_probe.preset==PROBE_RUSH;
 }
 static int (*mb_arm_action)(int)=mb_arm_local;
 static int mb_local_enabled(void){return mb.enabled_override>=0?mb.enabled_override:getbool(MB_SECTION,"enabled",1);}
@@ -369,10 +369,10 @@ static int mb_inside(struct MultiboxRect r,int x,int y){return x>=r.x&&x<r.x+r.w
 static int mb_ui_visible(void){
     /* In a very short window its Close
        panel button remains usable; the compact tab then makes room for us. */
-    int crowded=loading_probe_installed&&getbool("plugin_loading_probe","enabled",0)&&probe_gui_visible&&physical_w>=280&&physical_h>=418&&physical_h<520;
+    int crowded=loading_probe_installed&&getbool("plugin_loading_probe","enabled",0)&&probe_gui_visible&&physical_w>=280&&physical_h>=304&&physical_h<probe_gui_base_height()+136;
     return mb.role&&!paused&&!active_controls&&!crowded&&getbool(MB_SECTION,"panel",1)&&physical_w>=260&&physical_h>=120;
 }
-static int mb_loading_panel(void){return loading_probe_installed&&getbool("plugin_loading_probe","enabled",0)&&physical_w>=280&&physical_h>=418;}
+static int mb_loading_panel(void){return loading_probe_installed&&getbool("plugin_loading_probe","enabled",0)&&physical_w>=280&&physical_h>=304;}
 static int mb_list_rows(const struct MultiboxState **rows){
     int n=0;
     if(mb.role==MB_FOLLOWER&&mb.have_leader)rows[n++]=&mb.leader_state;

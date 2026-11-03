@@ -1,10 +1,10 @@
 [
   {
     "platform": "mac",
-    "version": "2026.11.02-connectivity.1",
-    "file": "downloads/SBPE-Connectivity-Mac-2026-11-02.zip",
-    "sha256": "5de1d3c77c4b05a4fb8c6f2dffa38554ca4fbbc92ef2fbaaa22d16cf2432b633",
-    "bytes": 386324
+    "version": "2026.11.02-connectivity.2",
+    "file": "downloads/SBPE-Connectivity-Mac-2026-11-02-v2.zip",
+    "sha256": "98ec0b7a3b67fdbc382e709e3465e1e41221ca687be86835817d6af695e22f7f",
+    "bytes": 369832
   },
   {
     "platform": "windows",
@@ -15,9 +15,9 @@
   },
   {
     "platform": "web",
-    "version": "2026.11.02-connectivity.1",
-    "file": "downloads/SBPE-Connectivity-Web-2026-11-02.zip",
-    "sha256": "51a897f64da9970cab1bbb81be1423591c2bee307ed1b921c2113cc53375bd5a",
-    "bytes": 2121716
+    "version": "2026.11.02-connectivity.2",
+    "file": "downloads/SBPE-Connectivity-Web-2026-11-02-v2.zip",
+    "sha256": "9683759f177af80154db0e31def992d87c3ccc08c4c671a52212766cc78af7e5",
+    "bytes": 2113864
   }
 ]

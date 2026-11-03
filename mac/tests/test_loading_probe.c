@@ -104,7 +104,9 @@ static void test_scope_and_cancellation(void){
     set_option("plugin_loading_probe","hold_seconds","-1");probe_arm();assert(loading_probe.seconds==1);
     set_option("plugin_loading_probe","hold_seconds","5");
 }
+static int key_reconnect_available(void *c,int (*f)(void*)){(void)c;(void)f;return 1;}
 static void test_keys(void){
+    probe_reconnect_request=key_reconnect_available;
     uint8_t keys[128]={0};probe_f9=probe_f10=0;context();loading_probe.state=PROBE_IDLE;
     keys[66]=1;loading_probe_keys(keys,128,0);assert(loading_probe.state==PROBE_IDLE);
     loading_probe_keys(keys,128,1);assert(loading_probe.state==PROBE_IDLE); /* held across chat is not a fresh press */
@@ -112,6 +114,7 @@ static void test_keys(void){
     loading_probe_keys(keys,128,1);assert(loading_probe.state==PROBE_ARMED); /* repeat */
     keys[67]=1;loading_probe_keys(keys,128,1);assert(loading_probe.state==PROBE_IDLE);
     struct Stage st={0};assert(loading_probe_consumes(&st,0x40000042));st.textInputTarget=(void*)1;assert(!loading_probe_consumes(&st,0x40000042));
+    probe_reconnect_request=NULL;set_option("plugin_loading_probe","mode","normal");
     hold();memset(keys,0,sizeof(keys));loading_probe_keys(keys,128,1);keys[67]=1;loading_probe_keys(keys,128,1);assert(sends==1&&loading_probe.state==PROBE_RESULT);
 }
 static void test_input_and_time(void){

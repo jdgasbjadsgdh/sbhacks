@@ -1,85 +1,63 @@
-# Rush hold and the SC timeout — 2 November 2026
+# Rush and optional preview — Mac / Web v2, 2 November 2026
 
-**Warning: Boss hold and Preview room kick you after about 10 seconds.**
-Preview uses the same world-ready hold as Boss hold. Neither is a long wait.
-The warning appears in the Mac, Windows and web loading panels, even before
-you arm a hold. A client update cannot remove a server deadline.
+Rush is the only offered hold on Mac/Web v2. Arm it immediately before the
+next room's loading screen; in SC, arm before the last generator is destroyed.
+The loading gate applies to ordinary rooms, side/safe rooms, normal/elite
+missions and automatic SC boss entry. It does not skip intermediate rooms.
 
-## Rush before any boss
+**Preview: connect within 10 seconds or you'll be sent to Eschaton.**
+Preview releases the current asset readiness once and holds the server-created
+world's readiness. It shows current room/floor and allows free camera. The
+countdown includes map arrival and natural recovery; it does not restart after
+a reconnect or automatically finish the hold. Connect/F10 from an early hold
+instead finishes normal loading directly, without requesting a preview.
 
-Choose **Rush hold immediately before the desired boss transition**. It works
-with the next entry, regardless of boss family or normal/elite difficulty;
-it does not skip intermediate rooms. In SC, arm before the last generator
-is destroyed. Boss hold still skips intermediate rooms, but uses the short
-world-ready hold described above.
+## Loading and recovery
 
-Rush first holds the early asset-loading acknowledgment. Some in-mission
-transitions omit that step and send a world directly. The new version queues
-**one reconnect**, after the current network callback has returned, to try to
-reach the early asset phase on a fresh connection. Spawn readiness remains
-held throughout. This is an experimental fallback, not a verified server fix.
+Rush holds PVID_LOADED (22) before CreateWorld where supplied. This phase has no
+current room/platform data and works without a live WorldClient. Same-server
+room transitions can skip it. Rush then tries one deferred native/socket
+reconnect to obtain it; if absent again, it reports a world-ready fallback.
+The fallback has the short preview warning. No periodic refresh remains.
+Natural disconnects preserve active hold intent. Finish/Cancel takes precedence
+over a queued retry; stale worlds/sockets and already spawned players cancel it.
 
-If that fresh connection also omits the early phase, the panel remains in a
-world-ready fallback. It does not deliberately reconnect repeatedly. Natural
-server disconnects can still occur. Finish/Cancel take precedence over a
-queued Rush retry; a changed world, socket or spawned character cancels it.
-The server can select another room or expire the mission during recovery.
+A client update cannot extend the server deadline or promise a retained mission.
+Older long early-hold trials are historical, not evidence of current SC lifetime.
+Live early Rush/SC retention after the latest game update remains unverified.
 
-**EARLY HOLD means no current map or platform data is available.** Wait there,
-then choose Preview room only when ready for a short inspection. Preview ends
-the early wait. Use Reconnect promptly to request a fresh normal spawn.
-Finish loading/F10 during an early Rush hold instead continues normal loading
-directly. Timed mode still advances into preview automatically, so its preview
-also has the short deadline.
+## Disconnect + hold
 
-## Can SC platforms be watched without entering the short preview?
+Mac/Web v2 place the button beside Rush. It requires a living spawned character
+and no active hold, then queues one close while Rush remains armed for recovery.
+Before closing, the deferred action rechecks the socket, room and character.
+Repeated activation, dead/replaced characters, stale sockets and canceled or
+expired requests cannot produce a second close. There is no health trigger.
+Mac retains its configurable native shortcut; Web uses the current tab's button.
+Group arming remains separate from emergency activation.
 
-The inspected client protocol separates these stages:
+## Data available before preview
 
-| Stage | Available information | What it can show |
-| --- | --- | --- |
-| LoadPVid / early asset hold | Asset version string | No live platform positions or current room |
-| CreateWorld and subsequent world updates | World properties, objects and motion changes | Current map and platform movement; starts the short hold |
-| Another normally spawned client in the same mission | That client's current world updates | A live view while the held client waits early |
+| Stage | Available data |
+| --- | --- |
+| LoadPVid / early asset hold | Asset version; no live map/platform positions |
+| CreateWorld and world updates | Current world properties, objects and motion |
+| Another spawned account | That client's live map; no observer transfer feature is included |
 
-The native `LoadPVid` structure contains a `pvid` string, not world objects.
-`CreateWorld` contains `worldprops`, `worldstate`, `spawnobj` and `worldid`.
-Suppressing local rendering, discarding objects, or pausing receive processing
-does not undo a world the server has already created or restart its deadline.
+Hiding rendering or pausing local input cannot undo a server-created world.
+The plugin never labels cached/origin room data as current destination data.
+No platform settlement detector, guaranteed protection or chest timer is included.
 
-No supported single-client method was found to receive accurate live platform
-positions while staying in the asset-only phase. A cached platform position
-would become stale, and extrapolating one motion descriptor cannot predict
-later server-issued splits, phase changes or settlement. This release does
-not label such guesses as current positions and adds no automatic settlement
-detector.
+## Install and limits
 
-The available workaround is to watch on another spawned account while the
-held account waits early, or open a brief preview near the intended reconnect
-time. Receiving telemetry from another account would require an additional
-observer feature; it is not included in these packages.
+Use the complete platform ZIP in the repository README. Mac installs with
+INSTALL.command; Web installs with INSTALL.html into its Overrides folder.
+Both preserve existing unrelated settings, back up replaced files and leave
+activation to a later normal launch/reload. No client is launched during checks.
 
-## Evidence and validation limits
-
-Local 2 November logs include `jungle_boss` and `caveHard` world holds ending
-in socket hangup at 9.962 and 9.952 seconds. Earlier world-hold trials ended
-near 25 seconds. Separate early asset holds finished manually after 60.078,
-76.261 and 103.499 seconds. These establish observed behavior on those trials,
-not a guaranteed SC retention duration or a server rejection explanation.
-The SC timeout warning also incorporates the player's report.
-
-Offline tests exercise the actual deferred native I/O queue, all three state
-machines, simulated boss entries, fresh asset holds, unchanged ordinary
-traffic, failed/duplicate callbacks, fallback without a retry loop, stale
-connections, Cancel/Finish, installers and browser UI. No live game is started
-or restarted during validation. Live SC confirmation of the new reconnect
-attempt remains pending, including a Windows in-game trial.
-
-## Updating
-
-Use the complete ZIP linked from the repository README. Mac uses
-INSTALL.command or UPDATE_EXISTING.command; Windows uses INSTALL.cmd with its
-existing SBPE 1.7.0 folder; web uses INSTALL.html with its Overrides folder.
-Existing configuration and explicit key bindings are retained. Restart native
-clients or reload the web page when ready to load the new code. Installers do
-not start or restart games. Earlier downloadable archives remain available.
+Native regressions exercise room/SC early gates, exact-once continuation,
+queued closes, recovery, input/time/acks, camera, compact UI and hidden controls.
+Web uses the actual upstream ABI/manager and isolated Chromium for transport,
+DOM, multi-tab arming, manual disconnect, downloads and narrow layouts.
+These tests validate client behavior; live server retention remains unverified.
+Windows retains its previously published v1 build and older controls in this update.

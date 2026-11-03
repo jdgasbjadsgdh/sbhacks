@@ -8,7 +8,7 @@
 enum {PROBE_IDLE,PROBE_ARMED,PROBE_HOLD,PROBE_RECONNECT,PROBE_RESULT,PROBE_WAIT};
 enum {PROBE_ANY,PROBE_RUSH,PROBE_BOSS,PROBE_STAGED};
 enum {PROBE_STAGE_NONE,PROBE_STAGE_EARLY,PROBE_STAGE_PENDING,PROBE_STAGE_PREVIEW};
-static int probe_preset=PROBE_ANY;
+static int probe_preset=PROBE_RUSH;
 static int (*probe_group_arm)(int);
 static int probe_group_local;
 static int loading_probe_installed,probe_f8,probe_f9,probe_f10;
@@ -29,7 +29,7 @@ static struct {
     int preset,ready_type,asset_finish,stage;
     int staged_fallback,room_preview,rush_retry_attempted,rush_retry_pending;
     unsigned asset_headers,world_headers,asset_empty_calls,asset_proto_calls,asset_unbound_calls,phase_trace_logs;
-    double early_seconds,early_connection_started;
+    double early_seconds,early_connection_started,held_world_started,preview_started;
     uint64_t time_ms;
     uint32_t world,game;
     struct WorldClient *wc;struct ServerConnection *connection;struct GameClient *gc;
@@ -457,6 +457,7 @@ static void probe_manual_reconnect(void){
     if(probe_preview_pending()){
         snprintf(loading_probe.result,sizeof(loading_probe.result),"Waiting for map preview. Cancel to finish normally.");return;
     }
+    if(loading_probe.state==PROBE_ARMED){loading_probe.state=PROBE_IDLE;snprintf(loading_probe.result,sizeof(loading_probe.result),"Rush disarmed.");return;}
     if(loading_probe.preset==PROBE_STAGED&&loading_probe.stage==PROBE_STAGE_EARLY&&loading_probe.state==PROBE_WAIT){
         loading_probe.state=PROBE_RESULT;loading_probe.stage=PROBE_STAGE_PENDING;loading_probe.asset_finish=1;loading_probe.post_closed=1;loading_probe.released=probe_clock();
         snprintf(loading_probe.result,sizeof(loading_probe.result),"Preview requested; waiting for a fresh connection.");
@@ -500,7 +501,7 @@ static int probe_room_preview_available(void){
 static void probe_preview_room(void){
     if(!probe_room_preview_available())return;
     if(loading_probe.preset==PROBE_STAGED){probe_manual_reconnect();return;}
-    loading_probe.room_preview=1;
+    loading_probe.room_preview=1;loading_probe.preview_started=probe_clock();
     if(loading_probe.state==PROBE_HOLD&&!probe_same_connection())probe_wait_for_world("room preview requested after early connection loss");
     if(loading_probe.state==PROBE_WAIT){
         loading_probe.state=PROBE_RESULT;loading_probe.stage=PROBE_STAGE_PENDING;loading_probe.asset_finish=1;
@@ -542,7 +543,7 @@ static void loading_probe_keys(const uint8_t *keys,int n,int allowed){
     if(edge_key(keys,n,"F9",&probe_f9,allowed&&enabled&&!paused)){
         if(loading_probe.state==PROBE_HOLD||loading_probe.state==PROBE_WAIT){if(!loading_probe.manual)probe_release("manual release");}
         else if(loading_probe.state==PROBE_ARMED){loading_probe.state=PROBE_IDLE;LOG("Loading test: disarmed.");}
-        else if(loading_probe.state!=PROBE_RECONNECT&&!loading_probe.asset_finish)probe_arm();
+        else if(loading_probe.state!=PROBE_RECONNECT&&!loading_probe.asset_finish){probe_preset=PROBE_RUSH;set_option("plugin_loading_probe","mode","manual");probe_arm();}
     }
 }
 static int loading_probe_consumes(struct Stage *st,int key){
@@ -667,6 +668,7 @@ static void loading_probe_send(struct ServerConnection *connection,int type){
     if(!recovering)loading_probe.started=probe_clock();
     else{++loading_probe.recoveries;LOG("Loading test: recovered world readiness re-held (%d recoveries); elapsed %.3fs; no player readiness released.",loading_probe.recoveries,probe_clock()-loading_probe.started);}
     loading_probe.last_sample=probe_clock();loading_probe.deadline=loading_probe.manual?0:loading_probe.started+loading_probe.seconds;
+    if(!recovering||!loading_probe.held_world_started)loading_probe.held_world_started=probe_clock();
     loading_probe.create_logged=0;
     loading_probe.world_t0=loading_probe.world_t1=probe_world_t(cw);loading_probe.objects0=loading_probe.objects1=probe_objects(cw);
     loading_probe.client_t0=loading_probe.client_t1=probe_client_t(cw);
@@ -724,33 +726,34 @@ static void loading_probe_frame(void){
         else if(now-loading_probe.last_post_sample>=5){loading_probe.last_post_sample=now;LOG("Loading test: post-release %.1fs; received maxT=%d own_t=%d local_player=%s.",age,probe_world_t(wc->clientWorld),probe_client_t(wc->clientWorld),wc->clientWorld->player?"present":"absent");}
     }
 }
+/* Emergency actions share this panel; implementation follows in reconnect_lab.h. */
+static int dc_lab_start(void),dc_lab_can_start(void),dc_lab_enabled(void);
+static const char *dc_lab_shortcut(void),*dc_lab_status(void);
 struct ProbeRect {int x,y,w,h;};
-#define PROBE_BUTTONS 8
-/* Keep the full control set usable on short windows; client rows below use
-   the same height so their reconnect buttons never overlap the help text. */
-static int probe_gui_base_height(void){return physical_h<506?388:416;}
+enum {PROBE_RUSH_BUTTON,PROBE_DISCONNECT_BUTTON,PROBE_CONNECT_BUTTON,PROBE_CANCEL_BUTTON,
+      PROBE_CAMERA_BUTTON,PROBE_PREVIEW_BUTTON,PROBE_BUTTONS};
+static int probe_gui_base_height(void){return 284;}
 static int probe_gui_anchor_y=200;
 static int probe_gui_rects(struct ProbeRect *panel,struct ProbeRect buttons[PROBE_BUTTONS],struct ProbeRect *tab){
-    if(physical_w<280||physical_h<418)return 0;
+    if(physical_w<280||physical_h<304)return 0;
     int clients=probe_gui_visible&&probe_clients_height?probe_clients_height():0;
     int below=probe_below_height?probe_below_height():0;
-    int base=probe_gui_base_height();
-    *panel=(struct ProbeRect){physical_w-380,probe_gui_visible?200:probe_gui_anchor_y,368,base+clients};
+    *panel=(struct ProbeRect){physical_w-340,probe_gui_visible?200:probe_gui_anchor_y,328,probe_gui_base_height()+clients};
     if(panel->x<10)panel->x=10;if(panel->x+panel->w>physical_w-10)panel->w=physical_w-panel->x-10;
     int visible=probe_gui_visible?panel->h:28;
     if(panel->y+visible+below>physical_h-10)panel->y=physical_h-visible-below-10;
     if(panel->y<10)panel->y=10;
     if(probe_gui_visible)probe_gui_anchor_y=panel->y;
-    int width=(panel->w-36)/2;
-    int pitch=(base-236)/4;
-    /* Put Preview next to Rush in the visible flow, keeping action IDs stable. */
-    const int order[PROBE_BUTTONS]={0,1,7,2,4,6,3,5};
-    for(int slot=0;slot<PROBE_BUTTONS;++slot)buttons[order[slot]]=(struct ProbeRect){panel->x+12+(slot%2)*(width+12),panel->y+82+(slot/2)*pitch,width,26};
-    *tab=(struct ProbeRect){physical_w-252,panel->y,240,28};if(tab->x<10)tab->x=10;
+    int width=(panel->w-32)/2;
+    const int order[PROBE_BUTTONS]={PROBE_RUSH_BUTTON,PROBE_DISCONNECT_BUTTON,PROBE_PREVIEW_BUTTON,
+        PROBE_CONNECT_BUTTON,PROBE_CAMERA_BUTTON,PROBE_CANCEL_BUTTON};
+    for(int slot=0;slot<PROBE_BUTTONS;++slot)buttons[order[slot]]=(struct ProbeRect){panel->x+10+(slot%2)*(width+12),panel->y+64+(slot/2)*42,width,26};
+    *tab=(struct ProbeRect){panel->x,panel->y,240,28};
     return 1;
 }
 static int probe_inside(struct ProbeRect r,int x,int y){return x>=r.x&&x<r.x+r.w&&y>=r.y&&y<r.y+r.h;}
-static struct ProbeRect probe_hide_ui_rect(struct ProbeRect panel){return (struct ProbeRect){panel.x+panel.w-112,panel.y+9,100,24};}
+static struct ProbeRect probe_hide_ui_rect(struct ProbeRect panel){return (struct ProbeRect){panel.x+panel.w-124,panel.y+9,84,24};}
+static struct ProbeRect probe_close_rect(struct ProbeRect panel){return (struct ProbeRect){panel.x+panel.w-32,panel.y+9,22,24};}
 static unsigned probe_gui_captured;static int probe_gui_pressed=-1,probe_gui_was_open;
 static int loading_probe_mouse(int x,int y,int button,int down,int window_w,int window_h){
     if(button<0||button>=8)return 0;unsigned bit=1U<<button;
@@ -758,27 +761,32 @@ static int loading_probe_mouse(int x,int y,int button,int down,int window_w,int 
     if(connectivity_ui_hidden||!loading_probe_installed||!getbool("plugin_loading_probe","enabled",0)||active_controls||window_w<=0||window_h<=0){
         if(!down&&captured){probe_gui_captured&=~bit;probe_gui_pressed=-1;return 1;}return 0;
     }
-    struct ProbeRect panel,buttons[PROBE_BUTTONS],tab;if(!probe_gui_rects(&panel,buttons,&tab))return 0;
+    struct ProbeRect panel,buttons[PROBE_BUTTONS],tab;if(!probe_gui_rects(&panel,buttons,&tab)){
+        if(!down&&captured){probe_gui_captured&=~bit;probe_gui_pressed=-1;return 1;}return 0;
+    }
     x=scaled_mouse(x,physical_w,window_w);y=scaled_mouse(y,physical_h,window_h);
     if(down){
         if(!probe_inside(probe_gui_visible?panel:tab,x,y))return 0;
         probe_gui_captured|=bit;probe_gui_was_open=probe_gui_visible;probe_gui_pressed=-1;
         if(button==0){if(probe_gui_visible&&probe_inside(probe_hide_ui_rect(panel),x,y))probe_gui_pressed=PROBE_BUTTONS+1;
+            else if(probe_gui_visible&&probe_inside(probe_close_rect(panel),x,y))probe_gui_pressed=PROBE_BUTTONS+2;
             else if(!probe_gui_visible)probe_gui_pressed=PROBE_BUTTONS;
             else for(int i=0;i<PROBE_BUTTONS;++i)if(probe_inside(buttons[i],x,y))probe_gui_pressed=i;}
         return 1;
     }
-    if(!captured)return 0; /* an outside game press must receive its release */
+    if(!captured)return 0;
     probe_gui_captured&=~bit;int action=probe_gui_pressed;probe_gui_pressed=-1;
     if(button||probe_gui_was_open!=probe_gui_visible)return 1;
     if(action==PROBE_BUTTONS+1&&probe_gui_visible&&probe_inside(probe_hide_ui_rect(panel),x,y))connectivity_ui_hidden=1;
+    else if(action==PROBE_BUTTONS+2&&probe_gui_visible&&probe_inside(probe_close_rect(panel),x,y))probe_gui_visible=0;
     else if(action==PROBE_BUTTONS&&probe_inside(tab,x,y))probe_gui_visible=1;
     else if(action>=0&&action<PROBE_BUTTONS&&probe_inside(buttons[action],x,y)){
-        if(action<2){if(!paused&&!loading_probe.asset_finish&&loading_probe.state!=PROBE_HOLD&&loading_probe.state!=PROBE_WAIT&&loading_probe.state!=PROBE_RECONNECT){probe_preset=action==0?PROBE_RUSH:PROBE_BOSS;set_option("plugin_loading_probe","mode","manual");probe_arm();}}
-        else if(action==2)probe_manual_reconnect();
-        else if(action==3)probe_cancel();else if(action==4)probe_camera_toggle();else if(action==5)probe_gui_visible=0;
-        else if(action==6){if(!paused&&!loading_probe.asset_finish&&loading_probe.state!=PROBE_HOLD&&loading_probe.state!=PROBE_WAIT&&loading_probe.state!=PROBE_RECONNECT){probe_preset=PROBE_STAGED;set_option("plugin_loading_probe","mode","manual");probe_arm();}}
-        else if(action==7)probe_preview_room();
+        if(action==PROBE_RUSH_BUTTON){if(!paused&&!loading_probe.asset_finish&&loading_probe.state!=PROBE_HOLD&&loading_probe.state!=PROBE_WAIT&&loading_probe.state!=PROBE_RECONNECT){probe_preset=PROBE_RUSH;set_option("plugin_loading_probe","mode","manual");probe_arm();}}
+        else if(action==PROBE_DISCONNECT_BUTTON)dc_lab_start();
+        else if(action==PROBE_CONNECT_BUTTON)probe_manual_reconnect();
+        else if(action==PROBE_CANCEL_BUTTON)probe_cancel();
+        else if(action==PROBE_CAMERA_BUTTON)probe_camera_toggle();
+        else if(action==PROBE_PREVIEW_BUTTON)probe_preview_room();
     }
     return 1;
 }
@@ -824,52 +832,48 @@ static void probe_gui_text(const char *value,int x,int y,int size,uint32_t color
 static void probe_gui_button(struct ProbeRect r,const char *label,uint32_t color){
     fill_rect(r.x,r.y,r.w,r.h,color,BLENDMODE_BLEND);probe_gui_text(label,r.x+r.w/2,r.y+r.h/2,r.w<145?11:14,0xffffffff,.5,.5);
 }
+/* A conservative preview countdown includes time waiting for CreateWorld and
+ * native recovery. It never promises a fresh server deadline after a loss. */
+static double probe_preview_remaining(void){
+    double start=loading_probe.room_preview?loading_probe.preview_started:loading_probe.held_world_started;
+    return fmax(0,10.0-(probe_clock()-start));
+}
 static void loading_probe_overlay(void){
-    if(connectivity_ui_hidden||!loading_probe_installed||!getbool("plugin_loading_probe","enabled",0)||active_controls)return;
+    if(connectivity_ui_hidden||!loading_probe_installed||!getbool("plugin_loading_probe","enabled",0)||active_controls||!canvas_w||!canvas_h||!fill_rect)return;
     struct ProbeRect panel,buttons[PROBE_BUTTONS],tab;if(!probe_gui_rects(&panel,buttons,&tab))return;
     int old_w=*canvas_w,old_h=*canvas_h;*canvas_w=physical_w;*canvas_h=physical_h;char line[256];
-    if(!probe_gui_visible){snprintf(line,sizeof(line),"Loading: %s (F8)",probe_state_label());probe_gui_button(tab,line,0xe627394b);}
+    if(!probe_gui_visible){snprintf(line,sizeof(line),"Connection: %s (F8)",probe_state_label());probe_gui_button(tab,line,0xe627394b);}
     else{
         fill_rect(panel.x,panel.y,panel.w,panel.h,0xf0182430,BLENDMODE_BLEND);
         fill_rect(panel.x,panel.y,panel.w,3,0xff07d8bb,BLENDMODE_BLEND);
-        probe_gui_text("Loading controls",panel.x+12,panel.y+13,18,0xffffffff,0,0);
+        probe_gui_text("Connection",panel.x+10,panel.y+13,16,0xffffffff,0,0);
         probe_gui_button(probe_hide_ui_rect(panel),"Hide all UI",0xff30434e);
-        if(loading_probe.state==PROBE_HOLD||loading_probe.state==PROBE_WAIT)snprintf(line,sizeof(line),"%s | %.1f seconds held",probe_state_label(),probe_clock()-loading_probe.started);
-        else snprintf(line,sizeof(line),"%s",probe_state_label());
-        probe_gui_text(line,panel.x+12,panel.y+43,15,0xffffff60,0,0);
-        probe_gui_text(probe_manual_mode()?"Warning: Boss hold / Preview kick after 10s":"Normal Forest / Blight | Timed test",panel.x+12,panel.y+63,11,0xffffff60,0,0);
-        struct ServerConnection *connection=probe_connection();int connected=connection&&connection->state==CONNECTED;
+        probe_gui_button(probe_close_rect(panel),"X",0xff30434e);
         int pending=probe_preview_pending();
+        int preview=pending||(loading_probe.state==PROBE_HOLD&&loading_probe.ready_type==MT_WORLD_CREATED);
+        if(preview)snprintf(line,sizeof(line),"%s | connect in %.1fs",probe_state_label(),probe_preview_remaining());
+        else if(loading_probe.state==PROBE_HOLD||loading_probe.state==PROBE_WAIT)snprintf(line,sizeof(line),"%s | %.1fs held",probe_state_label(),probe_clock()-loading_probe.started);
+        else snprintf(line,sizeof(line),"%s",probe_state_label());
+        probe_gui_text(line,panel.x+10,panel.y+41,12,0xffffff60,0,0);
+        struct ServerConnection *connection=probe_connection();int connected=connection&&connection->state==CONNECTED;
         int can_arm=connected&&!paused&&!loading_probe.asset_finish&&loading_probe.state!=PROBE_HOLD&&loading_probe.state!=PROBE_WAIT&&loading_probe.state!=PROBE_RECONNECT;
-        probe_gui_button(buttons[0],"Rush hold",can_arm?0xff215c53:0xff303a40);probe_gui_button(buttons[1],"Boss hold",can_arm?0xff215c53:0xff303a40);
-        probe_gui_button(buttons[2],pending?"Waiting for map":loading_probe.preset==PROBE_STAGED&&loading_probe.stage==PROBE_STAGE_EARLY?"Next: preview":loading_probe.ready_type==MT_PVID_LOADED?"Finish loading":"Reconnect",!pending&&(connected||loading_probe.state==PROBE_WAIT)&&loading_probe.state!=PROBE_RECONNECT?0xff315b86:0xff303a40);
-        probe_gui_button(buttons[3],"Cancel hold",pending||loading_probe.state==PROBE_ARMED||loading_probe.state==PROBE_HOLD||loading_probe.state==PROBE_WAIT?0xff49414e:0xff303a40);
-        probe_gui_button(buttons[4],probe_camera.active?(probe_camera_available(NULL)?"Free camera: ON":"Free camera: WAIT"):"Free camera",probe_camera.active||probe_camera_available(NULL)?0xff215c53:0xff303a40);probe_gui_button(buttons[5],"Close panel",0xff374755);
-        snprintf(line,sizeof(line),"Timed: %.0fs",clamp(getnum("plugin_loading_probe","stage_early_seconds",360),1,1800));
-        probe_gui_button(buttons[6],line,can_arm?0xff215c53:0xff303a40);
-        probe_gui_button(buttons[7],"Preview room",probe_room_preview_available()?0xff315b86:0xff303a40);
-        int info=panel.y+probe_gui_base_height()-140;
-        char room[112],detail[112];int showing_room=probe_room_description(room,sizeof(room),detail,sizeof(detail));
-        probe_gui_text(room,panel.x+12,info,12,showing_room?0xff88e8bd:0xffc8d7e4,0,0);
-        probe_gui_text(detail,panel.x+12,info+18,11,0xffc8d7e4,0,0);
-        snprintf(line,sizeof(line),"Loading: %s",loading_probe.ready_type==MT_PVID_LOADED?"waiting before map creation":loading_probe.advances?"world updates observed":"waiting for map");
-        if(loading_probe.preset==PROBE_STAGED&&loading_probe.stage==PROBE_STAGE_EARLY)snprintf(line,sizeof(line),"Early hold: %.1f / %.0fs (then preview)",loading_probe.state==PROBE_HOLD||loading_probe.state==PROBE_WAIT?probe_clock()-loading_probe.started:0,loading_probe.early_seconds);
-        if(pending)snprintf(line,sizeof(line),"Preview pending; waiting for server-selected map");
-        int fallback=loading_probe.preset==PROBE_STAGED&&loading_probe.staged_fallback&&loading_probe.stage==PROBE_STAGE_PREVIEW&&(loading_probe.state==PROBE_HOLD||loading_probe.state==PROBE_WAIT);
-        if(loading_probe.rush_retry_pending)snprintf(line,sizeof(line),"Rush: reconnecting once for early loading");
-        else if(fallback)snprintf(line,sizeof(line),"Fallback: early wait unavailable; map loaded");
-        else if(loading_probe.preset==PROBE_RUSH&&showing_room&&!loading_probe.room_preview)snprintf(line,sizeof(line),"Fallback: early wait unavailable; map loaded");
-        else if(loading_probe.room_preview&&showing_room)snprintf(line,sizeof(line),"Preview may expire near 10s; reconnect promptly.");
-        /* Replace the old diagnostic block with short, task-oriented help. */
-        const char *help[PROBE_BUTTONS]={"Any entry; early retry once.","Boss preview may time out.",pending?"Waiting for server map.":loading_probe.ready_type==MT_PVID_LOADED?"Continue loading.":"Fresh reconnect to spawn.","Disarm or finish hold.","WASD/arrows; Shift fast.","Hide UI; hold stays on.","Wait, then show preview.","View map; keep held."};
-        const char *compact[PROBE_BUTTONS]={"Wait before entry.","Hold next boss.","Continue / spawn.","End / disarm hold.","WASD; Shift fast.","Hide; hold stays.","Wait, then view.","View; keep held."};
-        for(int i=0;i<PROBE_BUTTONS;++i)probe_gui_text(buttons[i].w<145?compact[i]:help[i],buttons[i].x,buttons[i].y+29,buttons[i].w<145?9:10,0xffb5c8d8,0,0);
-        probe_gui_text(line,panel.x+12,info+36,11,fallback||showing_room?0xffffb45c:0xffc8d7e4,0,0);
-        probe_gui_text(probe_record_failed?"Log save failed; check folder access.":probe_record?"Logs saved automatically in loading-tests/":"Logs save automatically when a hold is armed.",panel.x+12,info+56,11,probe_record_failed?0xffff7070:0xff88e8bd,0,0);
-        probe_gui_text("F8 panel/show UI | F9 arm | F10 next/finish",panel.x+12,info+76,11,0xffc8d7e4,0,0);
-        probe_gui_text("Server chooses spawn; preview is not reserved.",panel.x+12,info+96,11,0xffc8d7e4,0,0);
-        snprintf(line,sizeof(line),"%.48s",loading_probe.result);
-        probe_gui_text(line,panel.x+12,info+116,10,0xffc8d7e4,0,0);
+        probe_gui_button(buttons[PROBE_RUSH_BUTTON],"Rush hold",can_arm?0xff215c53:0xff303a40);
+        probe_gui_button(buttons[PROBE_DISCONNECT_BUTTON],"Disconnect + hold",dc_lab_can_start()?0xff315b86:0xff303a40);
+        probe_gui_button(buttons[PROBE_PREVIEW_BUTTON],"Preview room",probe_room_preview_available()?0xff315b86:0xff303a40);
+        probe_gui_button(buttons[PROBE_CONNECT_BUTTON],pending?"Waiting for map":"Connect",!pending&&(connected||loading_probe.state==PROBE_WAIT)&&loading_probe.state!=PROBE_RECONNECT?0xff315b86:0xff303a40);
+        probe_gui_button(buttons[PROBE_CAMERA_BUTTON],probe_camera.active?(probe_camera_available(NULL)?"Free camera: ON":"Free camera: WAIT"):"Free camera",probe_camera.active||probe_camera_available(NULL)?0xff215c53:0xff303a40);
+        probe_gui_button(buttons[PROBE_CANCEL_BUTTON],"Cancel hold",pending||loading_probe.state==PROBE_ARMED||loading_probe.state==PROBE_HOLD||loading_probe.state==PROBE_WAIT?0xff49414e:0xff303a40);
+        const char *help[PROBE_BUTTONS]={"Next room / SC entry.","Disconnect; Rush on.","F10: load / spawn.","Disarm / finish hold.","WASD; Shift fast.","View map; stay held."};
+        for(int i=0;i<PROBE_BUTTONS;++i)probe_gui_text(help[i],buttons[i].x,buttons[i].y+29,9,0xffb5c8d8,0,0);
+        char room[112],detail[112];probe_room_description(room,sizeof(room),detail,sizeof(detail));
+        snprintf(line,sizeof(line),"%.44s",room);probe_gui_text(line,panel.x+10,panel.y+194,11,0xff88e8bd,0,0);
+        const char *status=dc_lab_status();
+        if(!status[0]||loading_probe.state==PROBE_HOLD||loading_probe.state==PROBE_WAIT||pending)status=detail;
+        snprintf(line,sizeof(line),"%.48s",status);probe_gui_text(line,panel.x+10,panel.y+210,10,0xffc8d7e4,0,0);
+        probe_gui_text("Preview: connect within 10 seconds",panel.x+10,panel.y+231,11,0xffffb45c,0,0);
+        probe_gui_text("or you'll be sent to Eschaton.",panel.x+10,panel.y+245,11,0xffffb45c,0,0);
+        snprintf(line,sizeof(line),"F8 panel | F9 Rush | F10 connect | Hold: %.12s",dc_lab_shortcut());
+        probe_gui_text(probe_record_failed?"Log save failed; check folder access.":line,panel.x+10,panel.y+267,9,probe_record_failed?0xffff7070:0xffc8d7e4,0,0);
     }
     *canvas_w=old_w;*canvas_h=old_h;
 }
@@ -901,7 +905,7 @@ static void install_loading_probe(void){
     if(!getbool("plugin_loading_probe","enabled",0))return;
     probe_gui_visible=getbool("plugin_loading_probe","gui_visible",1);atexit(probe_record_close);
     if(!loading_probe_proto_hook((void*)PTR(0x100085db0))){LOG("Loading experiment message diagnostic hook mismatch; test disabled.");return;}
-    if(loading_probe_hook((void*)PTR(0x100085d10))){loading_probe_installed=1;LOG("Loading experiment available, UNARMED; mode=%s; F8 panel, F9 arms next map, F10 reconnects. Manual mode has no hold timer; native physics/time/input continue. Test logs save automatically in loading-tests/.",probe_manual_mode()?"any-map manual":"normal Forest/Blight timed");}
+    if(loading_probe_hook((void*)PTR(0x100085d10))){loading_probe_installed=1;LOG("Compact Connection available, UNARMED; Rush only; preview requires Connect within 10 seconds or Eschaton return; mode=%s; F8 panel, F9 arms next map, F10 reconnects. Manual mode has no hold timer; native physics/time/input continue. Test logs save automatically in loading-tests/.",probe_manual_mode()?"any-map manual":"normal Forest/Blight timed");}
     else LOG("Loading experiment hook mismatch; test disabled.");
 }
 #else

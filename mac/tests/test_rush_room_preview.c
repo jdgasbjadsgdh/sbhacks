@@ -62,7 +62,7 @@ int SBPE_RUSH_MAIN(int argc,char **argv){
     /* Actual button click advances early loading without releasing WORLD_CREATED. */
     rush_early();physical_w=800;physical_h=600;probe_gui_visible=1;probe_gui_captured=0;
     struct ProbeRect panel,buttons[PROBE_BUTTONS],tab;assert(probe_gui_rects(&panel,buttons,&tab));
-    int x=buttons[7].x+buttons[7].w/2,y=buttons[7].y+buttons[7].h/2;
+    int x=buttons[PROBE_PREVIEW_BUTTON].x+buttons[PROBE_PREVIEW_BUTTON].w/2,y=buttons[PROBE_PREVIEW_BUTTON].y+buttons[PROBE_PREVIEW_BUTTON].h/2;
     assert(loading_probe_mouse(x,y,0,1,800,600)&&loading_probe_mouse(x,y,0,0,800,600));assert(probe_preview_pending()&&sends==1);
     if(argc>1){
         int w=2400,h=1800;canvas_w=&w;canvas_h=&h;

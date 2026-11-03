@@ -18,6 +18,8 @@ static unsigned char stalled_hold_failure(void *p){
 }
 static void manual_context(void){
     context();set_option("plugin_loading_probe","mode","manual");
+    /* Legacy fixtures test the explicit world fallback; retry has its own fixture. */
+    set_option("plugin_loading_probe","rush_reconnect","no");
     memset(&fixture_gc,0,sizeof(fixture_gc));fixture_gc.serverConnection=&connection;fixture_gc.worldClient=&wc;probe_game=fixture_game;probe_preset=PROBE_ANY;
     memset(&loading_probe,0,sizeof(loading_probe));memset(&network_loading_reconnect,0,sizeof(network_loading_reconnect));
     network_continue_io=fresh_io;network_failure_io=manual_failure;probe_reconnect_request=network_request_loading_reconnect;
@@ -322,18 +324,19 @@ static void test_manual_gui_input(void){
         mouse_button(x,y,0,1,NULL);mouse_button(x,y,0,0,NULL);
         assert(!forwarded_clicks);assert(loading_probe.state==(action==0?PROBE_ARMED:PROBE_IDLE));
     }
-    /* Staged GUI arms, waits for a real entry, then advances without spawning. */
-    int sx=(buttons[6].x+buttons[6].w/2)/2,sy=(buttons[6].y+buttons[6].h/2)/2;
-    mouse_button(sx,sy,0,1,NULL);mouse_button(sx,sy,0,0,NULL);assert(loading_probe.preset==PROBE_STAGED&&loading_probe.state==PROBE_ARMED);
-    sx=(buttons[7].x+buttons[7].w/2)/2;sy=(buttons[7].y+buttons[7].h/2)/2;
+    /* Rush is the only arm button; Preview advances without spawning. */
+    int sx=(buttons[PROBE_RUSH_BUTTON].x+buttons[PROBE_RUSH_BUTTON].w/2)/2,sy=(buttons[PROBE_RUSH_BUTTON].y+buttons[PROBE_RUSH_BUTTON].h/2)/2;
+    mouse_button(sx,sy,0,1,NULL);mouse_button(sx,sy,0,0,NULL);assert(loading_probe.preset==PROBE_RUSH&&loading_probe.state==PROBE_ARMED);
+    sx=(buttons[PROBE_PREVIEW_BUTTON].x+buttons[PROBE_PREVIEW_BUTTON].w/2)/2;sy=(buttons[PROBE_PREVIEW_BUTTON].y+buttons[PROBE_PREVIEW_BUTTON].h/2)/2;
     mouse_button(sx,sy,0,1,NULL);mouse_button(sx,sy,0,0,NULL);assert(loading_probe.state==PROBE_ARMED&&!network_loading_reconnect.connection);
     loading_probe_send(&connection,MT_PVID_LOADED);
     mouse_button(sx,sy,0,1,NULL);mouse_button(sx,sy,0,0,NULL);assert(loading_probe.stage==PROBE_STAGE_PENDING&&sends==1);
-    sx=(buttons[0].x+buttons[0].w/2)/2;sy=(buttons[0].y+buttons[0].h/2)/2;
-    mouse_button(sx,sy,0,1,NULL);mouse_button(sx,sy,0,0,NULL);assert(loading_probe.preset==PROBE_STAGED&&loading_probe.stage==PROBE_STAGE_PENDING);
+    sx=(buttons[PROBE_RUSH_BUTTON].x+buttons[PROBE_RUSH_BUTTON].w/2)/2;sy=(buttons[PROBE_RUSH_BUTTON].y+buttons[PROBE_RUSH_BUTTON].h/2)/2;
+    mouse_button(sx,sy,0,1,NULL);mouse_button(sx,sy,0,0,NULL);assert(loading_probe.preset==PROBE_RUSH&&loading_probe.stage==PROBE_STAGE_PENDING);
     uint8_t pending_keys[128]={0};probe_f9=0;pending_keys[66]=1;loading_probe_keys(pending_keys,128,1);assert(loading_probe.stage==PROBE_STAGE_PENDING);
     probe_cancel();staged_world(&cathedral);assert(sends==2);manual_context();probe_preset=PROBE_RUSH;
-    int x=(buttons[5].x+buttons[5].w/2)/2,y=(buttons[5].y+buttons[5].h/2)/2;
+    struct ProbeRect close=probe_close_rect(panel);
+    int x=(close.x+close.w/2)/2,y=(close.y+close.h/2)/2;
     mouse_button(x,y,0,1,NULL);mouse_button(x,y,0,0,NULL);assert(!probe_gui_visible);
     x=(tab.x+tab.w/2)/2;y=(tab.y+tab.h/2)/2;mouse_button(x,y,0,1,NULL);mouse_button(x,y,0,0,NULL);assert(probe_gui_visible);
     /* Mouse-up after an outside gameplay press must always reach the game. */
@@ -407,12 +410,12 @@ static void gui_snapshot(const char *artifact_dir,const char *name){
 static void test_gui_draw(const char *artifact_dir){
     manual_context();probe_gui_visible=1;probe_record_failed=0;int w=2400,h=1800;canvas_w=&w;canvas_h=&h;physical_w=800;physical_h=600;render_pixel_ratio=1;
     create_text=gui_make_text;query_texture=gui_query;draw_texture=gui_texture;fill_rect=gui_rectangle;
-    gui_snapshot(artifact_dir,"mac-loading-panel");assert(gui_rectangles==3+PROBE_BUTTONS&&gui_texts>=10&&w==2400&&h==1800);
+    gui_snapshot(artifact_dir,"mac-loading-panel");assert(gui_rectangles==4+PROBE_BUTTONS&&gui_texts>=10&&w==2400&&h==1800);
     staged_early();fake_time+=90;text_slot=0;gui_snapshot(artifact_dir,"staged-early-panel");
     probe_manual_reconnect();text_slot=0;gui_snapshot(artifact_dir,"staged-pending-panel");
     staged_world(&cathedral);text_slot=0;gui_snapshot(artifact_dir,"staged-preview-panel");
     manual_context();probe_preset=PROBE_STAGED;probe_arm();staged_world(&cathedral);text_slot=0;gui_snapshot(artifact_dir,"staged-fallback-panel");
-    int fallback_warning=0;for(unsigned id=1;id<=gui_next_texture;++id)if(strstr(glyphs[id].value,"Fallback: early wait unavailable"))fallback_warning=1;assert(fallback_warning);
+    int fallback_warning=0;for(unsigned id=1;id<=gui_next_texture;++id)if(strstr(glyphs[id].value,"Preview: connect within 10 seconds"))fallback_warning=1;assert(fallback_warning);
     gui_rectangles=gui_texts=0;probe_gui_visible=0;text_slot=0;loading_probe_overlay();assert(gui_rectangles==1&&gui_texts==1&&w==2400&&h==1800);
     for(int ratio=1;ratio<=2;++ratio)for(int width=400;width<=1600;width+=200){render_pixel_ratio=ratio;physical_w=width;physical_h=480;probe_gui_visible=1;text_slot=0;loading_probe_overlay();assert(w==2400&&h==1800);}
     render_pixel_ratio=1;

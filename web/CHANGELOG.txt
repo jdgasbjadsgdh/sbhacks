@@ -1,3 +1,9 @@
+2 November 2026 — Compact Connection v2
+
+Rush-only controls, right-side Disconnect + hold, ten-second preview warning
+and conservative countdown; Boss/Timed choices removed. Mac also removes the
+separate Emergency panel. No periodic refresh/Back to Rush experiment included.
+
 2 NOVEMBER 2026 — CONNECTION UPDATE (2026.11.02-connectivity.1)
 WARNING: Boss hold and Preview room kick you after about 10 seconds.
 Preview uses the same short world-ready hold; use it only briefly.

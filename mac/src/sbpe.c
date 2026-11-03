@@ -127,7 +127,6 @@ static void loading_probe_keys(const uint8_t*,int,int);
 static int loading_probe_consumes(struct Stage*,int);
 static int probe_camera_consumes(struct Stage*,int,int,int);
 static int loading_probe_mouse(int,int,int,int,int,int);
-static int reconnect_lab_mouse(int,int,int,int,int,int);
 static void reconnect_lab_keys(const uint8_t*,int,int);
 static int reconnect_lab_consumes(struct Stage*,int,int,int);
 /* Presentation only: readiness holds, reconnects and mirrored input continue. */
@@ -371,7 +370,7 @@ static void zoom_update(struct Stage *st) {
 }
 static int scaled_mouse(int value,int canvas,int actual){return actual>0?(int)lround((double)value*canvas/actual):value;}
 static void mouse_move(int x,int y,void *u){mouse_activity();int w=0,h=0;get_window_size(*window_ptr,&w,&h);original_move(scaled_mouse(x,*canvas_w,w),scaled_mouse(y,*canvas_h,h),u);}
-static void mouse_button(int x,int y,int b,int down,void *u){mouse_activity();int w=0,h=0;get_window_size(*window_ptr,&w,&h);if(reconnect_lab_mouse(x,y,b,down,w,h)||bow_mouse(x,y,b,down,w,h)||multibox_mouse(x,y,b,down,w,h)||loading_probe_mouse(x,y,b,down,w,h))return;original_button(scaled_mouse(x,*canvas_w,w),scaled_mouse(y,*canvas_h,h),b,down,u);}
+static void mouse_button(int x,int y,int b,int down,void *u){mouse_activity();int w=0,h=0;get_window_size(*window_ptr,&w,&h);if(bow_mouse(x,y,b,down,w,h)||multibox_mouse(x,y,b,down,w,h)||loading_probe_mouse(x,y,b,down,w,h))return;original_button(scaled_mouse(x,*canvas_w,w),scaled_mouse(y,*canvas_h,h),b,down,u);}
 
 static struct WorldObject *objects[LIMIT];static int nobjects;
 static uintptr_t seen_objects[LIMIT*2];
@@ -821,7 +820,6 @@ static void stage_draw(struct Stage *st,int dt){
     efc_overlay();
     loading_probe_overlay();
     bow_overlay();
-    reconnect_lab_overlay();
     if(!paused){multibox_connections_overlay();multibox_overlay();}
     probe_camera_end();
     /* Notice is also confirmation the drawing-table hook is running. */

@@ -1,14 +1,15 @@
 # SBPE Disconnect & Loading Controls
 
-Loading holds, room preview, free camera, and manual disconnect/reconnect controls
-for StarBreak. Mac and Windows include **Emergency hold**: disconnect a spawned
-character and hold its next spawn until you choose to continue.
+Compact Connection controls for StarBreak: Rush hold, optional room preview,
+free camera and manual disconnect/reconnect. The **Mac and Web v2** panels offer
+Rush as the only hold, with **Disconnect + hold** beside it. Boss, Timed and the
+unpublished refresh/Back to Rush controls are absent.
 
-**Warning: Boss hold and Preview room kick you after about 10 seconds.**
-Use Rush for an early wait and preview only briefly. Rush now tries one fresh
-connection when an entry skips early loading, for any boss family. This remains
-an experimental workaround; live SC confirmation is pending.
-[Updated workflow and platform-data investigation](docs/RUSH-AND-SC.md).
+**Preview: connect within 10 seconds or you'll be sent to Eschaton.**
+A countdown warns while previewing; it never auto-connects or refreshes. Rush
+continues to target next-room loading screens and SC: arm it before the last
+generator is destroyed. Live server retention after the update is unverified.
+[Workflow and loading-stage details](docs/RUSH-AND-SC.md).
 
 ## Downloads
 
@@ -18,11 +19,11 @@ plugin file or running an installer from GitHub's source preview.
 
 | Platform | Download | Package version |
 | --- | --- | --- |
-| Mac SBPE | [Download Mac ZIP](https://github.com/jdgasbjadsgdh/sbhacks/raw/refs/heads/main/downloads/SBPE-Connectivity-Mac-2026-11-02.zip) | `2026.11.02-connectivity.1` |
+| Mac SBPE | [Download Mac ZIP](https://github.com/jdgasbjadsgdh/sbhacks/raw/refs/heads/main/downloads/SBPE-Connectivity-Mac-2026-11-02-v2.zip) | `2026.11.02-connectivity.2` |
 | Windows SBPE / Sandboxie | [Download Windows ZIP](https://github.com/jdgasbjadsgdh/sbhacks/raw/refs/heads/main/downloads/SBPE-Connectivity-Windows-2026-11-02.zip) | `2026.11.02-connectivity.1` |
-| WebBreak | [Download Web ZIP](https://github.com/jdgasbjadsgdh/sbhacks/raw/refs/heads/main/downloads/SBPE-Connectivity-Web-2026-11-02.zip) | `2026.11.02-connectivity.1` |
+| WebBreak | [Download Web ZIP](https://github.com/jdgasbjadsgdh/sbhacks/raw/refs/heads/main/downloads/SBPE-Connectivity-Web-2026-11-02-v2.zip) | `2026.11.02-connectivity.2` |
 
-These complete packages were updated on 2 November 2026. Earlier archives
+Mac and Web were updated to v2 on 2 November 2026; Windows retains v1. Earlier archives
 remain in downloads/. Source files, version metadata and SHA-256 checksums are
 included. Personal account settings and test recordings are excluded.
 
@@ -30,9 +31,10 @@ included. Personal account settings and test recordings are excluded.
 
 | Feature | Mac | Windows / Sandboxie | WebBreak |
 | --- | --- | --- | --- |
-| Rush, Boss and Timed loading holds | Yes | Yes | Yes |
+| Rush hold for next-room / SC loading | Yes | Yes | Yes |
+| Boss / Timed choices | Removed | Legacy v1 controls | Removed |
 | Room preview and free camera | Yes | Yes | Yes |
-| Manual Emergency hold while spawned | Yes | Yes | No |
+| Manual Disconnect + hold while spawned | Yes | Yes | Yes, current tab |
 | Native multibox health, shared movement and Sync | Yes | Yes | No |
 | Arm holds on connected accounts/tabs | Native Mac group | Native Windows group | Same-browser-profile web tabs |
 | Hide every connectivity panel/tab | Yes | Collapse panels individually | Yes |
@@ -40,7 +42,7 @@ included. Personal account settings and test recordings are excluded.
 
 Mac, Windows and browser groups are separate. In these exported versions,
 **Emergency hold affects only the client where it is activated**; the
-**Arm all clients** checkbox broadcasts loading-mode arming, not Emergency hold.
+**Arm all clients/tabs** checkbox broadcasts Rush arming on Mac/Web v2, not Emergency hold. Windows v1 retains its older mode choices.
 
 ## Install on Mac
 
@@ -100,8 +102,9 @@ Requires desktop Chrome or Edge and WebBreak build **1574197275**.
    the StarBreak tab when ready. The installer preserves WebBreak settings and
    backs up the previous override.
 
-The web installer does not refresh your game. This export has loading holds and
-preview, but **does not include the native Emergency hold or movement/Sync panel**.
+The web installer does not refresh your game. Web v2 adds **Disconnect + hold**
+for the current tab, with guarded deferred socket closure and Rush on recovery.
+It does not include the native movement/Sync panel.
 
 Full web instructions: [START HERE](web/START%20HERE.txt) ·
 [Complete tutorial](web/TUTORIAL.txt).
@@ -113,9 +116,9 @@ are authoritative. On a Mac keyboard, function keys may require **Fn**.
 
 | Action | Mac defaults | Windows fresh-install defaults | Web |
 | --- | --- | --- | --- |
-| Emergency hold | F4 | F4, only if free | Unavailable |
+| Disconnect + hold | F4 | F4, only if free | Button only |
 | Open/close Loading controls | F8 | F6; F11 fallback | F8 |
-| Arm selected hold / cancel unused arm | F9 | F7 | F9 |
+| Arm Rush / cancel unused arm | F9 | F7 (selected mode in v1) | F9 |
 | Continue / finish / reconnect | F10 | F9 | F10 |
 
 On Mac, select a key slot under **Controls → SBPE** and press the new key;
@@ -134,24 +137,28 @@ unbound. **Set hotkey** on Emergency hold opens its row in the same editor.
 1. Before a portal or automatic boss transition, click **Rush hold**.
 2. Enter the transition. The panel should report an early hold where that loading
    stage is available.
-3. Wait in EARLY HOLD while the server retains the mission. Boss hold and preview kick after about 10 seconds.
+3. The loading screen remains held where the early asset gate is supplied.
+   Server deadlines remain outside the plugin’s control.
 4. Click **Preview room** to load the current map while keeping spawn held.
 5. Optionally enable **Free camera**, then use WASD/arrows to look around;
    Shift moves faster.
-6. Click **Reconnect** when ready to spawn through normal recovery.
+6. Click **Connect / F10 within ten seconds of Preview** to spawn through
+   normal recovery (Windows v1 labels the button Reconnect).
 
 ### SC boss example
 
 Arm **Rush hold before the final generator is destroyed**. Wait through the boss
-load, then use **Preview room** to inspect the platforms. Reconnect when ready.
-There is no automatic settled-platform/chest detector, and `Timed: 360s` is a
-six-minute wait setting, not a guaranteed SC completion time.
+load, then optionally use **Preview room** to inspect the platforms.
+Connect within ten seconds. There is no automatic settled-platform/chest detector
+or guaranteed mission retention. Mac/Web v2 remove the timed-hold choice.
 
-### Emergency hold while already spawned — Mac / Windows
+### Disconnect + hold while already spawned
 
-Press the assigned Emergency hold key, or click **Disconnect + hold**. It queues
-one disconnect/recovery and holds the next spawn. Use **Resume / reconnect** or
-the finish shortcut to return. Activation is manual, not based on low health.
+Click **Disconnect + hold** beside Rush on Mac/Web v2. On native clients, the
+existing Emergency hold shortcut still works. It queues one validated disconnect
+and arms Rush for recovery. Use **Connect / F10** to return. Web affects the
+current tab only; it rejects stale/dead/replaced-character requests before closing.
+Activation is manual, not based on low health.
 
 Emergency hold is not an instant Home command. It cannot undo damage or death
 already accepted by the server, guarantee immediate disappearance, or guarantee
@@ -163,15 +170,15 @@ unverified.
 | Button | What it does |
 | --- | --- |
 | **Rush hold** | Arms an early hold for the next map or boss load. |
-| **Boss hold** | Allows intermediate rooms, then holds spawn in the next boss room. |
+| **Boss hold** | Windows v1 only: intermediate rooms pass before a boss hold. Removed on Mac/Web v2. |
 | **Preview room** | Advances an early hold into a visible map while spawn remains held. It does not reserve that room as your eventual spawn. |
-| **Reconnect / Resume** | Finishes a map hold through fresh recovery. In earlier stages, read the button's current label: it may continue loading or advance to preview. |
+| **Connect** | Mac/Web v2: finish early Rush loading once, or reconnect from a loaded preview. F10 also cancels an unused arm without disconnecting. Windows v1 retains its Reconnect / Resume labels. |
 | **Free camera** | Moves the camera during an unspawned map preview. Selection survives a natural reconnect while the hold remains active. |
-| **Timed: 360s** | Waits six minutes, then advances to preview; spawning remains manual. |
+| **Timed: 360s** | Windows v1 only; removed on Mac/Web v2. No timer guarantees server retention. |
 | **Cancel hold** | Disarms or finishes the hold; finishing can make your character spawn. |
-| **Close panel** | Collapses the panel to a tab. The hold continues. |
+| **X / Close panel** | Collapses the panel to a tab. The hold continues. |
 | **Hide all UI** | Mac/Web: hides the panels and tabs. F8 restores them; active holds continue. |
-| **Arm all clients/tabs** | Applies the next Rush/Boss/Timed arm to connected compatible peers. Active holds are preserved. |
+| **Arm all clients/tabs** | Mac/Web v2: applies Rush arming to compatible peers; Windows v1 retains legacy mode choices. Active holds are preserved. |
 | **Controls ON/OFF** | Native multibox: enables/stops shared controls. |
 | **Sync** | Native multibox: enables shared controls and moves followers toward the focused character. It is not a teleport or permanent guarantee of alignment. |
 | **Reconnect all** | Native multibox: explicitly requests recovery for the connected group. |
@@ -210,7 +217,8 @@ For support, include the platform, package version, action and timing, and relev
 so copy them before reopening after a failure. Remove private information before
 sharing logs.
 
-The exported Mac build has native regression and sanitizer checks. Windows has
+Mac/Web v2 have native and browser regression checks, preview countdown and
+manual disconnect validation. Mac also passes sanitizer checks. Windows v1 has
 30 offline tests, including real loopback peers and ABI/input/UI fixtures; a live
 Windows/Sandboxie game trial is still required. Web has isolated Chromium
 DOM/ABI/multi-tab tests. These checks do not establish guaranteed damage protection

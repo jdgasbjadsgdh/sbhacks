@@ -1,0 +1,124 @@
+{
+  "version": "2026.11.02-connectivity.2",
+  "date": "2026-11-02",
+  "platforms_updated": [
+    "mac",
+    "web"
+  ],
+  "windows": "Existing v1 source/download unchanged",
+  "change": "Compact Rush-only Connection controls, Disconnect + hold beside Rush, 10-second preview warning/countdown; no periodic refresh or Back to Rush.",
+  "mac": [
+    {
+      "name": "x86_64-test_compact_connection",
+      "exit": 0,
+      "summary": "PASS: compact six-button panel; Rush-only F9/legacy multibox; next-room/SC early hold; explicit preview with non-resetting 10s warning countdown; finish; one deferred early-phase retry; fallback without a loop; integrated disconnect; short/narrow/Retina bounds; obsolete left-panel passthrough."
+    },
+    {
+      "name": "x86_64-test_rush_reentry",
+      "exit": 0,
+      "summary": "PASS: any-boss Rush early reentry, one deferred reconnect, no readiness release or retry loop; early recovery, repeated fallback/loss, manual finish/cancel, stale world/socket/player/disable and native failure races."
+    },
+    {
+      "name": "x86_64-test_emergency_hotkey",
+      "exit": 0,
+      "summary": "PASS: Emergency hold F4 on native key events with panel hidden; exact-once edges and paired releases; chat/Controls/pause/disable/background guards, remapping, conflict protection and reserved loading keys."
+    },
+    {
+      "name": "x86_64-test_hide_connectivity_ui",
+      "exit": 0,
+      "summary": "PASS: hide-all button, drag/release guards, no panel/tab draws or hidden hit boxes, captured mouse-up cleanup, unchanged hold/multibox state, F8 restore with focus/repeat guards and hidden Emergency activation."
+    },
+    {
+      "name": "x86_64-test_multibox_ui",
+      "exit": 0,
+      "summary": "PASS: combined native Loading test + client health/reconnect rows + multibox controls; expanded/collapsed/Off, pagination, small windows, Retina bounds and canvas restoration."
+    },
+    {
+      "name": "x86_64-test_network_progress",
+      "exit": 0,
+      "summary": "PASS: incomplete-frame deadlines and bounded rejected-update silence recovery; new-frame/socket/state/clock resets, completion wins; native I/O runs first, recovery after return; x86_64 trampoline preserves native frame/R12 and error path."
+    },
+    {
+      "name": "x86_64-test_stream_receiver",
+      "exit": 0,
+      "summary": "PASS: streaming receiver on real sockets: reentrant dispatch, socket/state/generation transitions, deferred rejection, EOF in partial header/payload, length/allocation bounds, reused connection cache and independent connections."
+    },
+    {
+      "name": "x86_64-test_compact_connection-sanitized",
+      "exit": 0,
+      "summary": "PASS: compact six-button panel; Rush-only F9/legacy multibox; next-room/SC early hold; explicit preview with non-resetting 10s warning countdown; finish; one deferred early-phase retry; fallback without a loop; integrated disconnect; short/narrow/Retina bounds; obsolete left-panel passthrough."
+    },
+    {
+      "name": "arm64-test_compact_connection-sanitized",
+      "exit": 0,
+      "summary": "PASS: compact six-button panel; Rush-only F9/legacy multibox; next-room/SC early hold; explicit preview with non-resetting 10s warning countdown; finish; one deferred early-phase retry; fallback without a loop; integrated disconnect; short/narrow/Retina bounds; obsolete left-panel passthrough."
+    }
+  ],
+  "web": [
+    {
+      "name": "test_sc_boss.js",
+      "exit": 0,
+      "summary": "PASS: Rush-only offered APIs; manual Web Disconnect + hold queues exactly one guarded close, retains early recovery, rejects stale/dead/replaced/canceled/expired requests; preview countdown never resets or auto-connects.\nPASS: any-boss Rush early reentry, recovered asset gate, no automatic retry loop, late preview, stale socket/world/peer/player, manual finish/cancel and natural-loss races.\nPASS: rush/boss presets, intermediate boss-room passthrough, no-world early asset hold/recovery, boundary-safe exact-once manual asset continuation, failed-send retry, explicit rush fallback; any-map outgoing stream gate across every chunk boundary; only empty readiness omitted; actual upstream virtual send, ABI/manager; existing room/time/input/acks unchanged; repeated natural losses retain hold; manual finish while disconnected; readiness-before-update race; exact-once queued manual close; no stale ready replay, send-failure rollback, encrypted-socket refusal; camera-only draw writes restore the heap; camera availability/reset, input capture and cleanup."
+    },
+    {
+      "name": "test_install.js",
+      "exit": 0,
+      "summary": "PASS: new web install, bounded in-place update, unrelated settings/game body preserved, backup, direct domain-folder selection, idempotence and unsupported-file refusal."
+    },
+    {
+      "name": "test_browser_sc.js",
+      "exit": 0,
+      "summary": "PASS: real Chromium with actual WebBreak ABI/manager; full UI/tab hiding, game click passthrough, unchanged hold/transport, hidden freecam and recovery, F8 chat/modifier/repeat guards and restore, F9/F10 while hidden; normal collapse/tab, JSON download, small-screen header/layout and unload. No user browser/game touched."
+    },
+    {
+      "name": "test_browser_arm_all.js",
+      "exit": 0,
+      "summary": "PASS: real Chromium BroadcastChannel between three same-profile tabs; opt-in checkbox, Rush-only arming, exact-once commands, active hold retained, unchecked local controls, keyboard after checkbox focus, separate browser profile isolated. No real game/server accessed."
+    }
+  ],
+  "packages": [
+    {
+      "package": "SBPE-Connectivity-Mac-2026-11-02-v2",
+      "file_hashes": "passed",
+      "archive_integrity": "passed",
+      "private_path_scan": "passed"
+    },
+    {
+      "package": "SBPE-Connectivity-Web-2026-11-02-v2",
+      "file_hashes": "passed",
+      "archive_integrity": "passed",
+      "private_path_scan": "passed"
+    },
+    {
+      "check": "Mac installer fixture",
+      "result": "passed; settings preserved, backup verified, no game present"
+    }
+  ],
+  "binary_verification": "PASS: exact game SHA-256, UUID, 127 native symbol addresses including render flush and WorldView/nameplate methods, writable draw table, original draw slots, GL sampler lazy import slot, Intel Mach-O dylib, macOS 10.14 minimum, system-only dependency; Mac HUD/TextTexture offsets.",
+  "live_validation": "Not performed; live SC/room retention and server deadlines remain unverified.",
+  "activation": "Install complete ZIPs; user chooses next native restart or web reload. No game or user browser was launched/restarted/refreshed.",
+  "checksums": "downloads/SHA256SUMS",
+  "downloads": [
+    {
+      "platform": "mac",
+      "version": "2026.11.02-connectivity.2",
+      "file": "downloads/SBPE-Connectivity-Mac-2026-11-02-v2.zip",
+      "sha256": "98ec0b7a3b67fdbc382e709e3465e1e41221ca687be86835817d6af695e22f7f",
+      "bytes": 369832
+    },
+    {
+      "platform": "windows",
+      "version": "2026.11.02-connectivity.1",
+      "file": "downloads/SBPE-Connectivity-Windows-2026-11-02.zip",
+      "sha256": "4f8efcf8f4eca79c7bef6ee77d8df5b4c6fc08a36dd18886256af81c99a0ffa2",
+      "bytes": 230867
+    },
+    {
+      "platform": "web",
+      "version": "2026.11.02-connectivity.2",
+      "file": "downloads/SBPE-Connectivity-Web-2026-11-02-v2.zip",
+      "sha256": "9683759f177af80154db0e31def992d87c3ccc08c4c671a52212766cc78af7e5",
+      "bytes": 2113864
+    }
+  ]
+}

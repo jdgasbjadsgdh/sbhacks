@@ -1,8 +1,8 @@
 {
-  "connectivity_version": "2026.11.02-connectivity.1",
+  "connectivity_version": "2026.11.02-connectivity.2",
   "upstream_commit": "ec7fe74579ec6ad7a5e663a2a55672de62fc8361",
   "upstream_sha256": "f5de99f6e13ce048ad5e96fd18efcce75d4ba837ba07297fb5fcc029c01488ce",
-  "combined_sha256": "67f8cfe151514048cdb61ca7d7560275b7787fd4e7d7130bcbc486891cf67932",
+  "combined_sha256": "299b83e7c81618805e0781a77a4bafbb9e3f0368893b5bcc6952d419bd853907",
   "sc_test_initially_armed": false,
   "live_SC_validation": "pending",
   "changes_to_original_game_body": false

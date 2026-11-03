@@ -17,7 +17,7 @@ static void hotkey_context(struct Stage *stage){
 }
 int main(int argc,char **argv){
     previous_emergency_fixture_main(argc,argv);struct Stage stage={0},*stage_pointer=&stage;stage_ptr=&stage_pointer;
-    hotkey_context(&stage);dc_lab.visible=0;
+    hotkey_context(&stage);
     stage_keyboard(&stage,1,0x4000003d);assert(dc_lab.state==DC_QUEUED&&dc_lab.trial==1&&!lab_losses&&!hotkey_forwards);
     stage_keyboard(&stage,1,0x4000003d);assert(dc_lab.trial==1&&!hotkey_forwards);
     stage_keyboard(&stage,0,0x4000003d);assert(!dc_lab.owned[61]&&!hotkey_forwards);
@@ -43,7 +43,7 @@ int main(int argc,char **argv){
         hotkey_context(&stage);physical_w=800;physical_h=600;int width=2400,height=1800;canvas_w=&width;canvas_h=&height;
         text_slot=0;gui_next_texture=0;memset(texts,0,sizeof(texts));char path[4096];snprintf(path,sizeof(path),"%s/emergency-panel.svg",argv[1]);
         preview=fopen(path,"w");assert(preview);fputs("<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'><rect width='800' height='600' fill='#09233a'/>\n",preview);
-        reconnect_lab_overlay();fputs("</svg>\n",preview);fclose(preview);preview=NULL;assert(width==2400&&height==1800);
+        probe_gui_visible=1;loading_probe_overlay();fputs("</svg>\n",preview);fclose(preview);preview=NULL;assert(width==2400&&height==1800);
     }
     probe_record_close();puts("PASS: Emergency hold F4 on native key events with panel hidden; exact-once edges and paired releases; chat/Controls/pause/disable/background guards, remapping, conflict protection and reserved loading keys.");return 0;
 }

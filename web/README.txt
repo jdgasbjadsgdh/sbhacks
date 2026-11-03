@@ -1,85 +1,31 @@
-2 NOVEMBER 2026 — CONNECTION UPDATE (2026.11.02-connectivity.1)
-WARNING: Boss hold and Preview room kick you after about 10 seconds.
-Preview uses the same short world-ready hold; use it only briefly.
-Rush hold now tries one fresh early-loading connection if the transition
-skips the asset phase. Arm Rush immediately before ANY desired boss entry.
-It targets the next transition, so intermediate rooms are not skipped.
-No automatic retry loop or guaranteed retention. EARLY HOLD has no live
-platform data. Watch on another account, or preview briefly near spawn time.
-The server can choose another room on reconnect. Live SC confirmation of
-the new early reconnect is pending. See RUSH AND SC.md for the investigation.
-Install the complete package; restart/reload when ready. No game is restarted
-by the installer. Existing settings and shortcuts are preserved.
+SBPE Connection — Web v2 — 2026.11.02-connectivity.2
 
-SBPE Connectivity / Loading Controls for WebBreak
-25 October 2026 | Version 2026.10.25-connectivity.1
+Requires desktop Chrome/Edge and WebBreak build 1574197275. Extract the entire
+ZIP. In the game tab, DevTools > Sources > Overrides must point at a local
+folder with permission; keep DevTools open for Overrides. Open INSTALL.html,
+choose that same folder and click Install / update. The installer preserves
+WebBreak settings and saves a backup. Reload your game when ready; installation
+does not reload it. The complete ZIP includes the generated client and payload.
 
-INSTALL / UPDATE
-1. Extract the ENTIRE ZIP, keeping its files and folders together.
-2. Open INSTALL.html in desktop Chrome or Edge.
-3. Choose the same Overrides folder selected in the StarBreak tab's DevTools.
-   Select the folder containing www.starbreak.com, or that domain folder itself.
-4. Click Install / update. Existing WebBreak settings are preserved and the
-   previous override is backed up before it is replaced.
-5. Save any test log you want to keep, then reload your game page when ready.
-   Keep DevTools open so its local override applies.
+F8: panel / restore hidden UI. F9: Rush / cancel unused arm. F10: Connect.
+Rush hold: next room loading, including SC. Arm before SC's last generator.
+Disconnect + hold: one validated deferred close of this tab's current socket;
+Rush remains armed on recovery. Requires a living character, no active hold
+and at least ten seconds between uses. It does not broadcast to other tabs.
+Preview room: view the server-selected map while keeping spawn held.
+WARNING: connect within 10 seconds or you'll be sent to Eschaton.
+Connect: finish early loading, or reconnect from a loaded preview. F10 with
+an unused Rush arm cancels that arm without a disconnect.
+Free camera: WASD/arrows, Shift fast. Cancel hold: disarm/finish.
+X collapses the panel; Hide all UI hides panel and tab; F8 restores them.
+Save log downloads local metadata. Reloading discards unsaved web logs.
+Arm all connected web tabs broadcasts Rush only within this origin/profile.
 
-The installer does not reload your game. Copying files does not update a page
-that is already running. The included www.starbreak.com folder is the manual
-fallback; the installer is preferred for preserving custom WebBreak settings.
-First-time Overrides instructions are included in INSTALL.html.
-
-HIDE EVERY LOADING CONTROL
-Click Hide all UI in the top right of Loading controls. Both the full panel
-and its collapsed tab disappear. F8 restores the panel; on a Mac keyboard
-you may need Fn+F8. Keep the game page focused and close chat first.
-
-Hiding is local to this browser tab. It does not cancel a hold, reconnect,
-change camera selection or stop the timer. F9/F10 and free-camera movement
-keep working while hidden. A natural reconnect or arm-all message does not
-reopen the UI. A new page load starts with the panel visible again.
-
-Close panel is still available: it collapses just the panel, leaving a small
-clickable tab. F8 normally toggles that panel; after Hide all UI, F8 first
-restores it instead. Repeated/modified function keys and typing do not restore
-the UI accidentally.
-
-QUICK USE
-Rush hold: arm before the next portal or automatic boss transition. It waits
-at the earlier loading stage where available.
-Boss hold: let intermediate rooms load; hold spawn in the next boss room.
-Preview room: advance an early wait into a visible map with spawn still held.
-Free camera: in a map preview, use WASD/arrows; Shift moves faster.
-Reconnect: finish a map hold through fresh normal recovery. During an early
-wait this button can say Finish loading or Next: preview; read its label.
-Timed: 360s: early wait, then automatic preview after six minutes; spawn still
-requires manual finish. Six minutes is a test interval, not an SC guarantee.
-Cancel hold: disarm or finish the active hold; it can make you spawn.
-Save log: download the current session before refreshing or closing.
-
-SC: arm Rush hold before the last generator is destroyed, wait through the
-boss load, choose Preview room to inspect the platforms, then Reconnect when
-ready. The server chooses the room/checkpoint and can return you to Eschaton.
-There is no automatic final-platform or chest detector.
-
-KEYS
-F8: panel / restore hidden UI. F9: arm selected mode / cancel an unused arm.
-F10: next / finish / reconnect. Select Rush/Boss/Timed with its button first
-so you know which mode F9 will arm. These web loading shortcuts remain fixed.
-
-Arm all connected web tabs applies the next Rush/Boss/Timed arm to same-origin
-tabs in the same browser profile/storage partition. Active holds are preserved.
-UI hiding is local and is not broadcast. Separate/private profiles and native
-Mac/Windows clients are separate groups. This web package contains loading
-controls, not the native Emergency hold or shared-movement/Sync panel.
-
-DIAGNOSTICS / COMPATIBILITY
-This package targets WebBreak build 1574197275. Existing user settings and the
-original game body are preserved by the installer. No name-entry/spawn timing
-observer is included. Loading metadata is local until you save it; no feature
-logs are uploaded. Unsaved web logs disappear on page reload.
-
-The update has isolated Chromium DOM/ABI and multi-tab tests, plus loading,
-transport and installer regressions. The UI changes do not establish a fix
-for independent connection loss or guarantee mission retention.
-See TUTORIAL.txt for complete installation, loading-state and platform details.
+The compact 328px panel has Rush, Disconnect + hold, Preview, Connect, Free
+camera and Cancel. Boss, Timed, refresh and Back to Rush are absent. The preview
+countdown includes map arrival/recovery and never auto-connects or refreshes.
+A room that skips early loading triggers at most one fresh-connection attempt,
+then a short world-ready fallback if still absent. Server timeouts and mission
+retention remain uncontrolled. No movement/Sync or automatic platform detector
+is included. Offline ABI/transport, installer, multi-tab and real Chromium UI
+checks pass; live SC retention is unverified. See RUSH AND SC.md.

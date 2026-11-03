@@ -50,9 +50,11 @@ int SBPE_EMERGENCY_MAIN(int argc,char **argv){
     lab_context();assert(network_request_loading_reconnect(&connection,probe_reconnect_begin));
     assert(!dc_lab_start()&&network_loading_reconnect.connection==&connection&&network_loading_reconnect.validate==probe_reconnect_begin&&!lab_losses);
     lab_context();physical_w=800;physical_h=600;int width=2400,height=1800;canvas_w=&width;canvas_h=&height;
-    struct ProbeRect p,b[3],tab;assert(dc_lab_rects(&p,b,&tab));
-    reconnect_lab_overlay();assert(width==2400&&height==1800);
-    int x=b[2].x+5,y=b[2].y+5;assert(reconnect_lab_mouse(x,y,0,1,800,600));assert(reconnect_lab_mouse(x,y,0,0,800,600));assert(!dc_lab.visible);
-    assert(reconnect_lab_mouse(tab.x+5,tab.y+5,0,1,800,600));assert(reconnect_lab_mouse(tab.x+5,tab.y+5,0,0,800,600));assert(dc_lab.visible);
-    probe_record_close();puts("PASS: opt-in single-client disconnect lab; deferred exactly-once close, group bypass, HP logging without mutation, early/fallback hold, no automatic repeats, stale/dead/disabled cancellation, real queue cleanup and panel close/open/canvas restoration.");return 0;
+    probe_gui_visible=1;struct ProbeRect p,b[PROBE_BUTTONS],tab;assert(probe_gui_rects(&p,b,&tab));
+    loading_probe_overlay();assert(width==2400&&height==1800);
+    int x=b[PROBE_DISCONNECT_BUTTON].x+5,y=b[PROBE_DISCONNECT_BUTTON].y+5;
+    assert(loading_probe_mouse(x,y,0,1,800,600));assert(loading_probe_mouse(x,y,0,0,800,600));
+    assert(dc_lab.state==DC_QUEUED&&loading_probe.state==PROBE_ARMED&&loading_probe.preset==PROBE_RUSH);
+    dc_lab_cancel_queue("fixture cleanup");
+    probe_record_close();puts("PASS: opt-in single-client disconnect lab; deferred exactly-once close, group bypass, HP logging without mutation, early/fallback hold, no automatic repeats, stale/dead/disabled cancellation, real queue cleanup and integrated button/canvas restoration.");return 0;
 }

@@ -44,19 +44,20 @@
     var runtime = runtimeProvider || function () { return typeof SOCKFS !== 'undefined' ? SOCKFS : host.SOCKFS; };
     class Plugin extends sbpe.PluginBase {
       onInit() {
-        var self = this; this.mode = 'idle'; this.preset = 'any'; this.held = null; this.reconnectSocket = null; this.pending = false; this.unloaded = false; this.finishPending = null;
+        var self = this; this.mode = 'idle'; this.preset = 'rush'; this.held = null; this.reconnectSocket = null; this.pending = false; this.unloaded = false; this.finishPending = null;
         this.started = Date.now(); this.events = []; this.streams = new WeakMap(); this.lastSample = 0; this.lastUI = 0;
-        this.previewRequested = false; this.fallback = false; this.earlySeconds = 360;
+        this.previewRequested = false; this.previewStarted = null; this.emergencyRequest = null; this.lastEmergency = null; this.fallback = false; this.earlySeconds = 360;
         this.rushRetryEnabled = true; this.rushRetryAttempted = false; this.rushRetry = null;
         this.camera = null; this.cameraSaved = null; this.cameraKeys = new Set(); this.cameraDown = new Set();
         this.message = 'Arm for the next map (including SC boss). A disconnect keeps the test held until you finish.';
-        this.api = { arm: function () { self.arm(); }, reconnect: function () { self.requestReconnect('manual'); },
-          skipRush: function () { self.arm('rush'); }, skipBoss: function () { self.arm('boss'); },
-          previewRoom: function () { self.previewRoom(); }, staged: function () { self.arm('staged'); },
+        this.api = { arm: function () { self.arm('rush'); }, reconnect: function () { self.requestReconnect('manual'); },
+          skipRush: function () { self.arm('rush'); }, skipBoss: function () { self.arm('rush'); },
+          previewRoom: function () { self.previewRoom(); }, staged: function () { self.arm('rush'); },
           cancel: function () { self.cancel(); }, save: function () { self.save(); }, snapshot: function () { return self.snapshot(); },
           togglePanel: function () { self.togglePanel(); }, hideUI: function () { self.hideUI(); }, freeCamera: function () { self.toggleCamera(); } };
         this.api.armAllRush = function () { self.armAll('rush'); };
-        this.api.armAllBoss = function () { self.armAll('boss'); };
+        this.api.armAllBoss = function () { self.armAll('rush'); };
+        this.api.disconnectHold = function () { self.disconnectHold(); };
         this.initArmGroup();
         WB.scBossTest = this.api; this.makePanel(); this.attachTransport();
         this.key = function (e) {
@@ -70,7 +71,7 @@
           if (e.code === 'F8' || e.code === 'F9' || e.code === 'F10') {
             e.preventDefault(); e.stopImmediatePropagation();
             if (e.code === 'F8') self.togglePanel();
-            else if (e.code === 'F9') { if (self.mode === 'armed') self.cancel(); else self.arm(self.preset); }
+            else if (e.code === 'F9') { if (self.mode === 'armed') self.cancel(); else self.arm('rush'); }
             else self.requestReconnect('F10');
           }
         };
@@ -93,9 +94,9 @@
             if (d.kind==='arm' && ['any','rush','boss','staged'].indexOf(d.preset)>=0) {
               if (self.groupSeen.indexOf(d.request)>=0) return;
               self.groupSeen.push(d.request);if(self.groupSeen.length>64)self.groupSeen.shift();
-              self.arm(d.preset,true);
+              self.arm('rush',true);
               self.armChannel.postMessage({version:1,kind:'ack',request:d.request,sender:self.groupId,
-                accepted:self.mode==='armed'&&self.preset===d.preset});
+                accepted:self.mode==='armed'&&self.preset==='rush'});
             } else if (d.kind==='ack' && self.groupRequest===d.request) {
               if (self.groupReplies.indexOf(d.sender)>=0)return;
               self.groupReplies.push(d.sender);if(d.accepted)self.groupAccepted++;else self.groupSkipped++;
@@ -105,6 +106,7 @@
         } catch(e) {this.armChannel=null;this.groupStatus='Arm all unavailable: '+String(e);}
       }
       armAll(preset) {
+        preset='rush'; // Translate legacy group modes to the only offered hold.
         if(['any','rush','boss','staged'].indexOf(preset)<0)return;
         this.groupRequest=this.groupId+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
         this.groupReplies=[];this.arm(preset,true);
@@ -196,17 +198,18 @@
       }
       arm(preset, local) {
         if(this.applyToAll&&!local){this.armAll(preset||this.preset);return;}
-        if (this.mode === 'holding' || this.mode === 'waiting' || this.mode === 'finishing' || this.mode === 'preview_pending' || this.pending || this.mode === 'reconnecting') { this.message = 'Finish this test before arming again.'; this.updateUI(); return; }
+        if (this.emergencyRequest || this.mode === 'holding' || this.mode === 'waiting' || this.mode === 'finishing' || this.mode === 'preview_pending' || this.pending || this.mode === 'reconnecting') { this.message = 'Finish this test before arming again.'; this.updateUI(); return; }
         if (!this.attachTransport()) { this.message = 'Game socket runtime is unavailable; hold not armed.'; this.updateUI(); return; }
         var c = this.current();
         if (!c || !c.cw || c.connection.state !== 3 || !c.socket) { this.message = 'Enter a connected game before arming.'; this.updateUI(); return; }
         this.mode = 'armed'; this.preset = preset || 'any'; this.held = null; this.reconnectSocket = null; this.started = Date.now(); this.events = [];
-        this.previewRequested = false; this.fallback = false;
+        this.previewRequested = false; this.previewStarted = null; this.fallback = false;
         this.rushRetryAttempted = false; this.rushRetry = null;
         this.message = this.preset === 'rush' ? 'Skip rush armed: wait before map creation where possible. Catch-up is experimental.' : this.preset === 'boss' ? 'Skip boss armed: intermediate rooms pass; the next boss room will be held.' : 'Armed for the next map. F9 cancels the unused arm.';
         this.record('armed', { preset: this.preset, origin: this.identity(c) }); this.updateUI();
       }
       cancel() {
+        this.emergencyRequest=null;
         if (this.mode === 'preview_pending') { this.mode = 'finishing'; this.previewRequested = false; this.message = 'Preview canceled; next map loads normally.'; this.record('preview_canceled'); this.updateUI(); return; }
         if (this.preset === 'staged' && (this.mode === 'holding' || this.mode === 'waiting')) this.preset = 'any';
         if (this.mode === 'holding' || this.mode === 'waiting') { this.requestReconnect('cancel_hold'); return; }
@@ -300,7 +303,7 @@
           if(events.indexOf('early_asset_readiness_held') !== -1){self.fallback=false;self.message = 'Early hold: map and platforms not received. Preview room loads them; F10 finishes normally.';}
           if(events.indexOf('early_hold_world_fallback') !== -1 || events.indexOf('early_phase_absent_world_fallback') !== -1){self.fallback=true;self.message = 'Early wait unavailable on this entry; holding the loaded map instead.';}
           if(events.indexOf('world_after_early_finish') !== -1)self.message = 'Map selected after early finish. Compare room/floor with the other account.';
-          if(events.indexOf('room_preview_ready') !== -1)self.message = 'Room preview ready. Reconnect when you want to spawn.';
+          if(events.indexOf('room_preview_ready') !== -1)self.message = 'Room preview ready. Connect within 10 seconds.';
           if(events.length)self.updateUI();
           return length;
         };
@@ -325,7 +328,7 @@
       previewAvailable() { return !!(!this.pending && !this.previewRequested && this.held && this.held.type === 22 && (this.mode === 'holding' || this.mode === 'waiting')); }
       previewRoom() {
         if (!this.previewAvailable()) return;
-        this.previewRequested = true; this.record('room_preview_requested');
+        this.previewRequested = true; this.previewStarted = Date.now(); this.record('room_preview_requested');
         var c = this.current();
         if (this.mode === 'waiting' || !c || c.socket !== this.held.socket || c.connection.state !== 3) {
           this.mode = 'preview_pending'; this.message = 'Waiting for a fresh map; spawn stays held.'; this.updateUI(); return;
@@ -333,6 +336,8 @@
         this.requestReconnect('preview_room', false, true);
       }
       requestReconnect(reason, forceReconnect, forPreview) {
+        this.emergencyRequest=null;
+        if(!forceReconnect&&!forPreview&&this.mode==='armed'){this.cancel();return;}
         this.rushRetry = null;
         if(forceReconnect && this.finishPending){this.finishPending=null;this.pending=false;}
         if (this.pending || (!forceReconnect && (this.mode === 'reconnecting' || this.mode === 'finishing' || this.mode === 'preview_pending'))) return;
@@ -407,41 +412,72 @@
         }
         if (now-this.lastUI >= 250) { this.lastUI = now; this.updateUI(); }
       }
+      living(c) {
+        if(!c||!c.cw||!c.cw.player)return false;
+        var props=mem.cast('WorldObject',c.cw.player.address).props;
+        return props.hitpoints>0&&props.maxhitpoints>0;
+      }
+      canDisconnect(c) {
+        return !!(c&&c.connection.state===3&&c.socket&&this.living(c)&&!this.pending&&!this.emergencyRequest&&
+          ['armed','holding','waiting','finishing','preview_pending','reconnecting'].indexOf(this.mode)<0&&
+          (this.lastEmergency===null||Date.now()-this.lastEmergency>=10000)&&
+          Object.keys(c.socket.peers||{}).some(function(k){return c.socket.peers[k].socket.readyState===1;}));
+      }
+      disconnectHold() {
+        var c=this.current();
+        if(!this.canDisconnect(c)){this.message='Need a living character and no active hold. Wait 10s between uses.';this.updateUI();return;}
+        this.arm('rush',true);if(this.mode!=='armed')return;
+        var self=this,request={socket:c.socket,key:c.key,connection:c.connection.address,player:c.cw.player.address,at:Date.now(),
+          peers:Object.keys(c.socket.peers||{}).map(function(k){return c.socket.peers[k].socket;}).filter(function(ws){return ws.readyState===1;})};
+        this.emergencyRequest=request;this.lastEmergency=request.at;this.message='Disconnect queued; Rush will hold the next load.';
+        this.record('disconnect_hold_requested');this.updateUI();
+        host.setTimeout(function(){
+          if(self.emergencyRequest!==request)return;self.emergencyRequest=null;
+          var fresh=self.current();
+          if(self.mode==='holding'||self.mode==='waiting'){self.record('disconnect_hold_overtaken');self.updateUI();return;}
+          var peers=fresh&&fresh.socket?Object.keys(fresh.socket.peers||{}).map(function(k){return fresh.socket.peers[k].socket;}):[];
+          if(self.unloaded||self.mode!=='armed'||self.preset!=='rush'||Date.now()-request.at>2000||!fresh||fresh.socket!==request.socket||
+             fresh.key!==request.key||fresh.connection.address!==request.connection||fresh.connection.state!==3||!self.living(fresh)||
+             fresh.cw.player.address!==request.player||!request.peers.some(function(ws){return ws.readyState===1&&peers.indexOf(ws)>=0;})){
+            if(self.mode==='armed')self.mode='idle';self.message='Disconnect canceled: character or connection changed.';self.record('disconnect_hold_canceled');self.updateUI();return;
+          }
+          request.peers.forEach(function(ws){if(ws.readyState===1&&peers.indexOf(ws)>=0)ws.close(1000,'Manual Rush hold');});
+          self.message='Disconnected; Rush is armed for recovery.';self.record('disconnect_hold_issued');self.updateUI();
+        },0);
+      }
+      previewRemaining() {
+        var start=this.previewStarted===null?(this.held?this.held.started:Date.now()):this.previewStarted;
+        return Math.max(0,10-(Date.now()-start)/1000);
+      }
       makePanel() {
-        var self = this, p = this.panel = doc.createElement('section'); p.setAttribute('aria-label', 'SBPE loading test');
-        p.style.cssText = 'position:fixed;right:12px;top:clamp(12px,16vh,160px);box-sizing:border-box;width:min(368px,calc(100vw - 24px));max-height:calc(84vh - 24px);overflow:auto;padding:12px;background:#182430f5;color:#fff;border:1px solid #516c80;border-top:3px solid #07d8bb;border-radius:8px;font:13px/1.4 system-ui;z-index:2147483646';
-        var header=doc.createElement('div');header.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap';p.appendChild(header);
-        var title = doc.createElement('strong'); title.textContent = 'Loading controls'; title.style.fontSize = '17px'; header.appendChild(title);
-        this.hideButton=doc.createElement('button');this.hideButton.type='button';this.hideButton.textContent='Hide all UI';
-        this.hideButton.title='Hide the loading panel and tab. F8 restores them; the hold stays active.';
-        this.hideButton.style.cssText='min-height:29px;padding:4px 9px;border:1px solid #4c697e;border-radius:4px;background:#30434e;color:#fff;font:inherit;cursor:pointer';
-        this.hideButton.onclick=this.api.hideUI;header.appendChild(this.hideButton);
-        this.status = doc.createElement('div'); this.status.style.cssText = 'white-space:pre-line;color:#ffff8a;margin:6px 0'; this.status.setAttribute('aria-live', 'polite'); p.appendChild(this.status);
-        var flow = doc.createElement('small'); flow.textContent = 'Warning: Boss hold and Preview room kick after about 10 seconds.'; flow.style.cssText = 'display:block;color:#ffff8a;margin-bottom:10px'; p.appendChild(flow);
-        var buttons = doc.createElement('div'); buttons.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:10px 12px'; p.appendChild(buttons);
-        this.buttons = {};
-        [['Rush hold', this.api.skipRush, 'Any next entry; tries early loading once.', 'rush'], ['Boss hold', this.api.skipBoss, 'View next boss; preview can time out.', 'boss'],
-         ['Preview room', this.api.previewRoom, 'End early wait; keep spawn held.', 'preview'], ['Reconnect', this.api.reconnect, 'Reconnect for a fresh spawn.', 'finish'],
-         ['Free camera', this.api.freeCamera, 'Preview: WASD / arrows; Shift faster.', 'camera'], ['Timed: 360s', this.api.staged, 'Early wait, then auto-preview.', 'staged'],
-         ['Cancel hold', this.api.cancel, 'Disarm or finish the hold.', 'cancel'], ['Close panel', this.api.togglePanel, 'Hide UI; keep hold active.', 'close'],
-         ['Save log', this.api.save, 'Download this session’s test log.', 'save']].forEach(function (item) {
-          var cell = doc.createElement('div'), b = doc.createElement('button'), help = doc.createElement('small');
-          b.type = 'button'; b.textContent = item[0]; b.title = item[2]; b.style.cssText = 'width:100%;min-height:29px;padding:5px 7px;border:1px solid #4c697e;border-radius:4px;background:#215c53;color:#fff;font:inherit;cursor:pointer';
-          help.textContent = item[2]; help.style.cssText = 'display:block;margin-top:3px;color:#b5c8d8;font-size:10px;line-height:1.35';
-          b.onclick = function () { try { item[1](); } catch (e) { self.message = e.message; self.updateUI(); } };
-          cell.appendChild(b); cell.appendChild(help); buttons.appendChild(cell); self.buttons[item[3]] = b;
-          if (item[3] === 'camera') self.cameraButton = b;
+        var self=this,p=this.panel=doc.createElement('section');p.setAttribute('aria-label','SBPE loading test');
+        p.style.cssText='position:fixed;right:12px;top:clamp(12px,12vh,120px);box-sizing:border-box;width:min(328px,calc(100vw - 24px));max-height:calc(88vh - 24px);overflow:auto;padding:10px;background:#182430f5;color:#fff;border:1px solid #516c80;border-top:3px solid #07d8bb;border-radius:4px;font:12px/1.3 system-ui;z-index:2147483646';
+        var header=doc.createElement('div');header.style.cssText='display:flex;align-items:center;gap:5px';p.appendChild(header);
+        var title=doc.createElement('strong');title.textContent='Connection';title.style.cssText='font-size:15px;margin-right:auto';header.appendChild(title);
+        this.buttons={};
+        function headerButton(label,action,key){var b=doc.createElement('button');b.type='button';b.textContent=label;b.style.cssText='min-height:24px;padding:3px 6px;border:1px solid #4c697e;border-radius:3px;background:#30434e;color:#fff;font:10px system-ui;cursor:pointer';b.onclick=action;header.appendChild(b);self.buttons[key]=b;return b;}
+        this.hideButton=headerButton('Hide all UI',this.api.hideUI,'hide');this.hideButton.title='F8 restores all connection UI; the hold stays active.';
+        headerButton('Save log',this.api.save,'save');headerButton('X',this.api.togglePanel,'close').setAttribute('aria-label','Close panel');
+        this.status=doc.createElement('div');this.status.style.cssText='white-space:pre-line;color:#ffff8a;margin:7px 0;font-size:11px';this.status.setAttribute('aria-live','polite');p.appendChild(this.status);
+        var grid=doc.createElement('div');grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:7px 10px';p.appendChild(grid);
+        [['Rush hold',this.api.skipRush,'Next room / SC entry.','rush'],['Disconnect + hold',this.api.disconnectHold,'This tab; Rush on.','disconnect'],
+         ['Preview room',this.api.previewRoom,'View map; stay held.','preview'],['Connect',this.api.reconnect,'F10: load / spawn.','finish'],
+         ['Free camera',this.api.freeCamera,'WASD / arrows; Shift fast.','camera'],['Cancel hold',this.api.cancel,'Disarm / finish hold.','cancel']].forEach(function(item){
+          var cell=doc.createElement('div'),b=doc.createElement('button'),help=doc.createElement('small');b.type='button';b.textContent=item[0];b.title=item[2];
+          b.style.cssText='width:100%;min-height:28px;padding:4px 3px;border:1px solid #4c697e;border-radius:3px;background:#215c53;color:#fff;font:11px system-ui;cursor:pointer';
+          help.textContent=item[2];help.style.cssText='display:block;margin-top:2px;color:#b5c8d8;font-size:9px;line-height:1.3';
+          b.onclick=function(){try{item[1]();}catch(e){self.message=e.message;self.updateUI();}};cell.appendChild(b);cell.appendChild(help);grid.appendChild(cell);self.buttons[item[3]]=b;if(item[3]==='camera')self.cameraButton=b;
         });
-        var groupCheck=doc.createElement('label');groupCheck.style.cssText='display:flex;align-items:center;gap:7px;margin-top:10px;font-size:13px';
+        var groupCheck=doc.createElement('label');groupCheck.style.cssText='display:flex;align-items:center;gap:5px;margin-top:7px;font-size:11px';
         this.groupCheckbox=doc.createElement('input');this.groupCheckbox.type='checkbox';this.groupCheckbox.onchange=function(){self.applyToAll=self.groupCheckbox.checked;};
         groupCheck.appendChild(this.groupCheckbox);var groupText=doc.createElement('span');groupText.textContent='Arm all connected web tabs';groupCheck.appendChild(groupText);p.appendChild(groupCheck);
-        this.roomLabel = doc.createElement('div'); this.roomLabel.style.cssText = 'margin-top:10px;color:#88e8bd;white-space:pre-line;font-size:12px'; p.appendChild(this.roomLabel);
-        this.groupLabel=doc.createElement('div');this.groupLabel.style.cssText='margin-top:6px;font-size:12px;color:#b5c8d8';p.appendChild(this.groupLabel);
-        var hint = doc.createElement('small'); hint.textContent = 'F8 panel / restore UI · F9 arm/cancel · F10 next/finish. Preview can time out. Server chooses spawn; preview is not reserved. Logs remain here until you save or reload.'; hint.style.cssText = 'display:block;color:#b5c8d8;margin-top:8px;font-size:10px'; p.appendChild(hint);
-        (doc.body || doc.documentElement).appendChild(p);
-        this.tab = doc.createElement('button'); this.tab.type = 'button'; this.tab.textContent = 'Loading controls (F8)';
-        this.tab.style.cssText = 'display:none;position:fixed;right:12px;top:clamp(12px,16vh,160px);padding:8px;background:#182430f5;color:#fff;border:1px solid #718699;border-radius:6px;z-index:2147483646;cursor:pointer';
-        this.tab.onclick = this.api.togglePanel; (doc.body || doc.documentElement).appendChild(this.tab); this.panelVisible = true;this.uiHidden=false;
+        this.roomLabel=doc.createElement('div');this.roomLabel.style.cssText='margin-top:6px;color:#88e8bd;white-space:pre-line;font-size:11px';p.appendChild(this.roomLabel);
+        this.groupLabel=doc.createElement('div');this.groupLabel.style.cssText='margin-top:4px;font-size:10px;color:#b5c8d8';p.appendChild(this.groupLabel);
+        var warning=doc.createElement('div');warning.textContent="Preview: connect within 10 seconds or you'll be sent to Eschaton.";warning.style.cssText='margin-top:7px;color:#ffb45c;font-size:11px';p.appendChild(warning);
+        var hint=doc.createElement('small');hint.textContent='F8 panel / restore UI · F9 Rush · F10 connect';hint.style.cssText='display:block;color:#b5c8d8;margin-top:5px;font-size:10px';p.appendChild(hint);
+        (doc.body||doc.documentElement).appendChild(p);this.tab=doc.createElement('button');this.tab.type='button';this.tab.textContent='Connection (F8)';
+        this.tab.style.cssText='display:none;position:fixed;right:12px;top:12px;padding:6px;background:#182430f5;color:#fff;border:1px solid #718699;border-radius:3px;z-index:2147483646;cursor:pointer';
+        this.tab.onclick=this.api.togglePanel;(doc.body||doc.documentElement).appendChild(this.tab);this.panelVisible=true;this.uiHidden=false;
       }
       hideUI() { this.uiHidden=true;this.panelVisible=false;this.panel.style.display='none';this.tab.style.display='none'; }
       togglePanel() {
@@ -451,12 +487,13 @@
       }
       updateUI() {
         if(this.groupLabel)this.groupLabel.textContent=this.groupStatus;
-        var c = this.current(), busy = this.pending || ['holding','waiting','reconnecting','finishing','preview_pending'].indexOf(this.mode) >= 0;
+        var c = this.current(), busy = this.pending || this.emergencyRequest || ['holding','waiting','reconnecting','finishing','preview_pending'].indexOf(this.mode) >= 0;
         var canArm = !!(c && c.connection.state === 3 && c.cw && c.socket && !busy);
-        this.buttons.rush.disabled = this.buttons.boss.disabled = this.buttons.staged.disabled = !canArm;
+        this.buttons.rush.disabled = !canArm;
+        this.buttons.disconnect.disabled = !this.canDisconnect(c);
         this.buttons.preview.disabled = !this.previewAvailable();
         this.buttons.finish.disabled = this.pending || ['reconnecting','finishing','preview_pending'].indexOf(this.mode) >= 0;
-        this.buttons.finish.textContent = this.mode === 'preview_pending' ? 'Waiting for map' : this.held && this.held.type === 22 && this.mode === 'holding' ? (this.preset === 'staged' ? 'Next: preview' : 'Finish loading') : 'Reconnect';
+        this.buttons.finish.textContent = this.mode === 'preview_pending' ? 'Waiting for map' : 'Connect';
         this.buttons.finish.parentNode && (this.buttons.finish.parentNode.lastChild.textContent = this.held && this.held.type === 22 && !this.previewRequested ? 'Continue loading normally.' : 'Reconnect for a fresh spawn.');
         this.buttons.cancel.disabled = !(['armed','holding','waiting','preview_pending'].indexOf(this.mode) >= 0) || this.pending;
         this.cameraButton.disabled = !this.camera && !this.cameraAvailable(c);
@@ -465,18 +502,20 @@
         this.cameraButton.setAttribute('aria-pressed', this.camera ? 'true' : 'false');
         this.cameraButton.title = this.camera ? 'WASD or arrows to pan; Shift moves faster. Click again to turn off.' : 'Available with a loaded map while spawn is held.';
         this.status.textContent = this.mode.toUpperCase() + (this.fallback && (this.mode === 'holding' || this.mode === 'waiting') ? ' / FALLBACK' : '') + ((this.mode === 'holding' || this.mode === 'waiting') && this.held ? ' · '+Math.floor((Date.now()-this.held.started)/1000)+'s' : '')+'\n'+this.message;
+        if(this.mode==='preview_pending'||this.mode==='holding'&&this.held&&this.held.type===11)this.status.textContent+='\nConnect within '+this.previewRemaining().toFixed(1)+'s';
         if (this.camera) this.status.textContent += '\nCamera: WASD / arrows · Shift: faster';
         var shown = this.cameraAvailable(c);
         this.roomLabel.textContent = shown ? 'Preview: '+((c.cw.props.title ? util.getstr(c.cw.props.title) : '') || c.zone || c.music || 'unnamed room')+(isBoss(c) ? ' [boss]' : '')+'\n'+(c.floor >= 0 ? 'Floor '+(c.floor+1)+' · ' : '')+'map #'+c.world+' · preview only' : 'Room: not sent by server yet';
-        this.tab.textContent = 'Loading controls: '+this.mode.toUpperCase()+' (F8)';
+        this.tab.textContent = 'Connection: '+this.mode.toUpperCase()+' (F8)';
       }
-      snapshot() { return { schema: 3, plugin: 'WebBreak rush/boss loading test', preset: this.preset, build: WB.build, started_epoch_ms: this.started, mode: this.mode, events: JSON.parse(JSON.stringify(this.events)) }; }
+      snapshot() { return { schema: 3, plugin: 'WebBreak Connection controls', preset: this.preset, build: WB.build, started_epoch_ms: this.started, mode: this.mode, events: JSON.parse(JSON.stringify(this.events)) }; }
       save() {
         var url = host.URL.createObjectURL(new host.Blob([JSON.stringify(this.snapshot(), null, 2)], { type: 'application/json' }));
         var a = doc.createElement('a'); a.href = url; a.download = 'sbpe-web-sc-test-'+new Date(this.started).toISOString().replace(/[:.]/g, '-')+'.json';
         doc.body.appendChild(a); a.click(); a.remove(); host.setTimeout(function () { host.URL.revokeObjectURL(url); }, 1000);
       }
       onUnload() {
+        this.emergencyRequest=null;
         try {
           var buffered = this.current(), state = buffered && buffered.socket && this.streams.get(buffered.socket);
           if (this.mode === 'holding' || this.mode === 'waiting' || (state && state.header.length)) this.requestReconnect('plugin_unloaded',true);

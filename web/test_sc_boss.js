@@ -108,7 +108,7 @@ WB.scBossTest.reconnect();timers.shift()();
 ws=peer('after-race');socket={type:1,peers:{game:{socket:ws}}};sockets.set(9,socket);cw.id++;
 send(frame(11));assert.equal(p.mode,'done');sent.pop();cw.props.safe=0;
 // A failed send commits neither hold nor parser state; retry behaves once.
-WB.scBossTest.skipBoss();pointer(cw.props,'zone',forest);cw.id++;send(frame(11));assert.equal(p.mode,'armed');sent.pop();
+p.arm('boss');pointer(cw.props,'zone',forest);cw.id++;send(frame(11));assert.equal(p.mode,'armed');sent.pop();
 pointer(cw.props,'zone',boss);cw.id++;send(frame(11));assert.equal(p.mode,'holding');
 WB.scBossTest.reconnect();timers.shift()();ws=peer('boss-fresh');socket={type:1,peers:{game:{socket:ws}}};sockets.set(9,socket);cw.id++;send(frame(11));sent.pop();
 // Rush holds earlier with no WorldClient, survives recovery, and finishes via
@@ -139,7 +139,7 @@ conn.state=2;p.afterUpdate();conn.state=3;ws=peer('preview-recovery');socket={ty
 send(frame(22));assert.deepEqual(sent.pop(),frame(22));cw.id++;send(frame(11));assert.equal(sent.length,0);
 WB.scBossTest.reconnect();timers.shift()();ws=peer('preview-spawn');socket={type:1,peers:{game:{socket:ws}}};sockets.set(9,socket);cw.id++;send(frame(11));sent.pop();
 // Timed early hold advances only into preview; recovery never replays an old ready.
-WB.scBossTest.staged();pointer(gc,'worldClient',0);send(frame(22));p.held.started-=361000;p.afterUpdate();
+p.arm('staged');pointer(gc,'worldClient',0);send(frame(22));p.held.started-=361000;p.afterUpdate();
 assert(p.finishPending);conn.state=2;timers.shift()();assert.equal(p.mode,'preview_pending');
 conn.state=3;ws=peer('staged-recovery');socket={type:1,peers:{game:{socket:ws}}};sockets.set(9,socket);
 send(frame(22));sent.pop();pointer(gc,'worldClient',wc.address);cw.id++;send(frame(11));assert.equal(p.mode,'holding');assert.equal(sent.length,0);
@@ -200,6 +200,48 @@ for(const change of ['world','socket','player','peer','cancel','finish','loss'])
   timers.shift()();assert.equal(closed.length,n);
   if(change==='cancel'||change==='finish'){assert.equal(timers.length,1);timers.shift()();assert.equal(closed.length,n+1);}
 }
+// All offered/legacy API arm choices now select Rush. Internal legacy state
+// tests above remain as transport regression coverage, without UI choices.
+for(const action of ['arm','skipRush','skipBoss','staged']){
+  p.mode='done';p.pending=false;p.finishPending=null;pointer(gc,'worldClient',wc.address);conn.state=3;
+  socket={type:1,peers:{game:{socket:peer('api')}}};sockets.set(9,socket);
+  WB.scBossTest[action]();assert.equal(p.preset,'rush');WB.scBossTest.cancel();
+}
+function emergencyFixture(){
+ p.mode='done';p.pending=false;p.finishPending=null;p.emergencyRequest=null;p.lastEmergency=null;p.rushRetryEnabled=false;
+ pointer(gc,'worldClient',wc.address);conn.state=3;cw.id++;
+ const player=obj('WorldObject');player.props.hitpoints=100;player.props.maxhitpoints=100;pointer(cw,'player',player.address);
+ ws=peer('emergency');socket={type:1,peers:{game:{socket:ws}}};sockets.set(9,socket);return player;
+}
+let alive=emergencyFixture(),heapBefore=Buffer.from(memory),closeBefore=closed.length;
+WB.scBossTest.disconnectHold();WB.scBossTest.disconnectHold();assert.equal(timers.length,1);
+assert.equal(p.mode,'armed');assert.equal(p.preset,'rush');assert.equal(closed.length,closeBefore);
+timers.shift()();assert.equal(closed.length,closeBefore+1);assert.equal(p.mode,'armed');assert.deepEqual(Buffer.from(memory),heapBefore);
+// No periodic close: early loading stays held until an explicit finish.
+pointer(cw,'player',0);pointer(gc,'worldClient',0);ws=peer('emergency-recovery');socket={type:1,peers:{game:{socket:ws}}};sockets.set(9,socket);
+send(frame(22));assert.equal(p.mode,'holding');assert.equal(p.held.type,22);p.afterUpdate();assert.equal(timers.length,0);
+for(const change of ['world','socket','player','dead','peer','cancel','finish','loss','expired','early']){
+ const player=emergencyFixture();closeBefore=closed.length;WB.scBossTest.disconnectHold();assert.equal(timers.length,1);
+ if(change==='world')cw.id++;
+ if(change==='socket'){socket={type:1,peers:{game:{socket:peer('new')}}};sockets.set(9,socket);}
+ if(change==='player'){const next=obj('WorldObject');next.props.hitpoints=100;next.props.maxhitpoints=100;pointer(cw,'player',next.address);}
+ if(change==='dead')player.props.hitpoints=0;
+ if(change==='peer')socket.peers.game.socket=peer('new-peer');
+ if(change==='cancel')WB.scBossTest.cancel();
+ if(change==='finish')WB.scBossTest.reconnect();
+ if(change==='loss')ws.readyState=3;
+ if(change==='expired')p.emergencyRequest.at-=2001;
+ if(change==='early'){pointer(cw,'player',0);pointer(gc,'worldClient',0);send(frame(22));}
+ timers.shift()();assert.equal(closed.length,closeBefore);assert.equal(timers.length,0);
+ if(change==='early')assert.equal(p.mode,'holding');else assert.equal(p.mode,'idle');
+}
+// The warning countdown includes map arrival/recovery and never drives I/O.
+emergencyFixture();pointer(cw,'player',0);WB.scBossTest.skipRush();pointer(gc,'worldClient',0);send(frame(22));
+WB.scBossTest.previewRoom();timers.shift()();sent.pop();const warningStart=p.previewStarted;
+p.previewStarted-=9000;pointer(gc,'worldClient',wc.address);cw.id++;send(frame(11));assert(p.previewRemaining()<=1);
+conn.state=2;p.afterUpdate();conn.state=3;ws=peer('countdown-recovery');socket={type:1,peers:{game:{socket:ws}}};sockets.set(9,socket);cw.id++;send(frame(11));
+assert.equal(p.previewStarted,warningStart-9000);p.previewStarted-=2000;p.afterUpdate();assert.equal(p.previewRemaining(),0);assert.equal(timers.length,0);
+console.log('PASS: Rush-only offered APIs; manual Web Disconnect + hold queues exactly one guarded close, retains early recovery, rejects stale/dead/replaced/canceled/expired requests; preview countdown never resets or auto-connects.');
 p.mode='done';pointer(cw,'player',0); // unload has no active hold to finish
 WB.sbpe.refs.manager._remove('plugin_sc_boss_test');assert.equal(ops.sendmsg,original);assert.equal(doc.body.children.length,0);assert.equal(listeners.size,0);
 console.log('PASS: any-boss Rush early reentry, recovered asset gate, no automatic retry loop, late preview, stale socket/world/peer/player, manual finish/cancel and natural-loss races.');

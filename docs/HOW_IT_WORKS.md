@@ -4,7 +4,8 @@ The plugin controls which parts of the normal client loading sequence are allowe
 to finish. It does not create a different mission server or choose an arbitrary
 checkpoint. Internal state names vary slightly between platforms.
 
-**Warning: Boss hold and Preview room kick you after about 10 seconds.**
+**Preview: connect within 10 seconds or you'll be sent to Eschaton.**
+Mac/Web v2 offer Rush only; Windows v1 retains its older Boss/Timed controls.
 The 2 November update adds one deferred Rush reconnect when the early phase
 is absent. No platform data is available during an asset-only hold.
 See [Rush and SC](RUSH-AND-SC.md) for current behavior and the investigation.
@@ -21,14 +22,14 @@ See [Rush and SC](RUSH-AND-SC.md) for current behavior and the investigation.
 5. **Resume / reconnect:** the hold ends and normal recovery/loading continues.
    The server supplies the destination and spawn information.
 
-**Boss hold** permits intermediate rooms and waits in an eligible boss room.
+Windows v1 **Boss hold** permits intermediate rooms and waits in an eligible boss room; Mac/Web v2 remove that choice.
 **Rush hold** targets the next applicable load, including an automatic boss
 transition when armed before it starts. Selecting Preview advances the early
 hold; it cannot restore the earlier loading stage already passed.
 
 ## Emergency hold
 
-The Mac/Windows feature starts from an already spawned, living character. It
+The native Mac/Windows feature starts from an already spawned, living character. It
 queues one controlled disconnect/recovery and arms a loading hold for the next
 spawn. The disconnect is deferred to the native networking path, rather than
 closing a socket from a rendering or mouse callback. Press/repeat suppression,
@@ -39,6 +40,10 @@ not proof that every incoming hit was prevented. The server decides damage,
 death, room availability and recovery destinations. A client cannot undo a
 server-accepted death. There is no guaranteed maximum response time.
 
+Web v2 also provides a current-tab Disconnect + hold button. It queues a
+validated socket close outside the input callback, arms Rush for recovery and
+rechecks character, room and connection identity before closing.
+
 ## Camera and UI
 
 Free camera changes the local camera offset during an unspawned map preview;
@@ -47,7 +52,7 @@ for a valid held world, then resumes. A different room starts from its native
 camera offset/bounds. Finishing a hold, spawning or disabling camera mode ends
 that selection.
 
-Collapsing or hiding the UI only changes visibility. A hold, timer or reconnect
+Collapsing or hiding the UI only changes visibility. A hold or reconnect
 shortcut may remain active while every panel is hidden. Mac/Web F8 restores
 hidden UI; their native/loading actions remain separate from the visibility state.
 
@@ -59,7 +64,7 @@ are separate operations. A shared room and fresh state are required for movement
 The focused client is the movement source; background clients use their own
 input bindings. Turning controls off releases mirrored input.
 
-The published snapshots in this repository broadcast Rush/Boss/Timed arming
+The published snapshots in this repository broadcast Rush-only arming on Mac/Web v2 and legacy mode arming on Windows v1
 through **Arm all clients**. Emergency hold remains local in those snapshots.
 Mac and Windows use separate native groups. Web tabs share arming only within
 the same browser profile/storage partition and origin.

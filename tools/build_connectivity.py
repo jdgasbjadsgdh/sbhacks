@@ -11,7 +11,7 @@ import urllib.request
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
-VERSION = '2026.11.02-connectivity.1'
+VERSION = '2026.11.02-connectivity.2'
 UPSTREAM_COMMIT = 'ec7fe74579ec6ad7a5e663a2a55672de62fc8361'
 UPSTREAM_SHA = 'f5de99f6e13ce048ad5e96fd18efcce75d4ba837ba07297fb5fcc029c01488ce'
 CLIENT = 'VR1574197275.mvmmoclient.js'
@@ -40,7 +40,7 @@ def metadata(folder, platform):
     hashes = {str(p.relative_to(folder)): sha(p) for p in sorted(folder.rglob('*')) if p.is_file()}
     info = dict(version=VERSION, platform=platform, created_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 launches_or_restarts_during_install=False,
-                validation='Offline native/Windows/web and installer fixtures; live SC early-reentry result pending.',
+                validation='Compact Mac/Web offline native, sanitizer, browser, transport and installer fixtures; live SC retention pending.',
                 sha256=hashes)
     (folder / 'package-info.json').write_text(json.dumps(info, indent=2) + '\n')
     (folder / 'package.sha256').write_text(''.join(v + '  ' + k + '\n' for k, v in hashes.items()))
@@ -51,9 +51,9 @@ def tree(source, target):
                                                               'upstream', 'package-info.json', 'package.sha256'))
 
 
-def build(output):
+def build(output, platforms=('Mac', 'Web')):
     output.mkdir(parents=True, exist_ok=True)
-    names = {platform: 'SBPE-Connectivity-' + platform + '-2026-11-02' for platform in ('Mac', 'Windows', 'Web')}
+    names = {platform: 'SBPE-Connectivity-' + platform + '-2026-11-02-v2' for platform in platforms}
     if any((output / (name + '.zip')).exists() for name in names.values()):
         raise FileExistsError('Release archive already exists; choose a new output directory')
     original = upstream().read_text()
@@ -63,21 +63,25 @@ def build(output):
     manifest = []
     with tempfile.TemporaryDirectory(prefix='sbpe-connectivity-') as temp:
         stage = Path(temp)
-        mac = stage / names['Mac'];tree(ROOT / 'mac', mac)
-        subprocess.run(['xcrun', 'clang', '-arch', 'x86_64', '-mmacosx-version-min=10.14', '-march=x86-64',
-                        '-std=c11', '-dynamiclib', '-O2', '-Wl,-install_name,@rpath/sbpe-mac.dylib',
-                        '-o', str(mac / 'sbpe-mac.dylib'), str(mac / 'src/sbpe.c'),
-                        str(mac / 'src/websocket_transport.m'), '-fobjc-arc', '-framework', 'Foundation', '-lz', '-lpthread'], check=True)
-        win = stage / names['Windows'];tree(ROOT / 'windows', win)
-        web = stage / names['Web'];tree(ROOT / 'web', web)
-        (web / 'www.starbreak.com').mkdir()
-        (web / 'www.starbreak.com' / CLIENT).write_text(client)
-        (web / 'payload-data.js').write_text('window.SBPELoadingPayload = ' + json.dumps(dict(plugin=plugin, client=client), ensure_ascii=True) + ';\n')
-        (web / 'webbreak-build-info.json').write_text(json.dumps(dict(connectivity_version=VERSION,
-            upstream_commit=UPSTREAM_COMMIT, upstream_sha256=UPSTREAM_SHA,
-            combined_sha256=hashlib.sha256(client.encode()).hexdigest(),
-            sc_test_initially_armed=False, live_SC_validation='pending', changes_to_original_game_body=False), indent=2) + '\n')
-        for platform, folder in [('Mac', mac), ('Windows', win), ('Web', web)]:
+        folders=[]
+        if 'Mac' in platforms:
+            mac=stage/names['Mac'];tree(ROOT/'mac',mac)
+            subprocess.run(['xcrun','clang','-arch','x86_64','-mmacosx-version-min=10.14','-march=x86-64',
+                            '-std=c11','-dynamiclib','-O2','-Wl,-install_name,@rpath/sbpe-mac.dylib',
+                            '-o',str(mac/'sbpe-mac.dylib'),str(mac/'src/sbpe.c'),
+                            str(mac/'src/websocket_transport.m'),'-fobjc-arc','-framework','Foundation','-lz','-lpthread'],check=True)
+            folders.append(('Mac',mac))
+        if 'Web' in platforms:
+            web=stage/names['Web'];tree(ROOT/'web',web)
+            (web/'www.starbreak.com').mkdir()
+            (web/'www.starbreak.com'/CLIENT).write_text(client)
+            (web/'payload-data.js').write_text('window.SBPELoadingPayload = '+json.dumps(dict(plugin=plugin,client=client),ensure_ascii=True)+';\n')
+            (web/'webbreak-build-info.json').write_text(json.dumps(dict(connectivity_version=VERSION,
+                upstream_commit=UPSTREAM_COMMIT,upstream_sha256=UPSTREAM_SHA,
+                combined_sha256=hashlib.sha256(client.encode()).hexdigest(),
+                sc_test_initially_armed=False,live_SC_validation='pending',changes_to_original_game_body=False),indent=2)+'\n')
+            folders.append(('Web',web))
+        for platform, folder in folders:
             shutil.copy2(ROOT / 'docs/RUSH-AND-SC.md', folder / 'RUSH AND SC.md')
             metadata(folder, platform)
             archive = output / (folder.name + '.zip')
@@ -95,4 +99,6 @@ def build(output):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
-    build(parser.parse_args().output.resolve())
+    parser.add_argument('--platforms',nargs='+',choices=('Mac','Web'),default=['Mac','Web'])
+    args=parser.parse_args()
+    build(args.output.resolve(),args.platforms)
